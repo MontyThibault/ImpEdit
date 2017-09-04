@@ -3,9 +3,29 @@
 <html>
 	<head>
 		<title>ImpEdit</title>
+
+		<style>
+			html, body, p {
+				padding: 0;
+				margin: 0;
+			}
+
+			audio {
+				width: 100%;
+			}
+		</style>
 	</head>
 	<body>
 		<p>Hello World!</p>
+
+		<audio controls>
+			<source src='audio.mp3' type='audio/mpeg'></audio>
+		</audio>
+
+		<canvas id="screen"></canvas>
+
+		<script src='jquery-3.2.1.js'></script>
+		<script src='build/bundle.js'></script>
 		<script>document.write('<script src="http://' + (location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1"></' + 'script>')</script>
 	</body>
 

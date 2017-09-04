@@ -14,11 +14,12 @@
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.6.0",
     "mocha": "^3.5.0"
   },
   "scripts": {
     "test": "mocha",
-    "build": "babel src -d lib"
+    "browserify": "browserify src/main.js -o build/bundle.js"
   },
   "repository": {
     "type": "git",
