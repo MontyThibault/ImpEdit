@@ -1,0 +1,33 @@
+{
+  "name": "impedit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "",
+  "directories": {
+    "example": "examples",
+    "test": "test"
+  },
+  "dependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.6.0",
+    "chai": "^4.1.2"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "mocha": "^3.5.0"
+  },
+  "scripts": {
+    "test": "mocha",
+    "build": "babel src -d lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MontyThibault/ImpEdit.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MontyThibault/ImpEdit/issues"
+  },
+  "homepage": "https://github.com/MontyThibault/ImpEdit#readme"
+}
