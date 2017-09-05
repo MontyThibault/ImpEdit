@@ -1,0 +1,5 @@
+Potential improvements: 
+
+
+Set up a window resize observer system instead of querying every frame.
+Set up an update hierarchy instead of drawing every frame.
