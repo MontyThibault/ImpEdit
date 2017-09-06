@@ -72,7 +72,7 @@ Axis.prototype.pan = function(diff) {
 
 
 module.exports = Axis;
-},{"./rangeslider.js":7}],2:[function(require,module,exports){
+},{"./rangeslider.js":8}],2:[function(require,module,exports){
 function ControlPoint(x, y, editor, graph) {
 	this.x = x;
 	this.y = y;
@@ -127,7 +127,7 @@ ControlPoint.prototype.ondblclick = function() {
 
 module.exports = ControlPoint;
 },{}],3:[function(require,module,exports){
-var SplineEditor = require('./splineeditor.js');
+var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
 var MouseControl = require('./mousecontrol.js');
 var ReferenceLines = require('./referencelines.js');
@@ -171,9 +171,9 @@ function Graph(canvas) {
 
 
 	this.mousecontrol = new MouseControl(this);
-	this.splineeditor = new SplineEditor(this);
+	this.lineeditor = new LineEditor(this);
 
-	this.splineeditor.addControlPoint(5, 5);
+	this.lineeditor.addControlPoint(5, 5);
 
 
 
@@ -204,7 +204,7 @@ Graph.prototype.draw = function(context) {
 	// this.xAxis.drawLabels(context, toX, toY);
 	// this.yAxis.drawLabels(context, toX, toY);
 
-	this.splineeditor.draw(context, toX, toY);
+	this.lineeditor.draw(context, toX, toY);
 };
 
 
@@ -230,25 +230,93 @@ Graph.prototype.addControlPoint = function(x, y) {
 	var fromX = this.xAxis.canvasToGraph(x),
 		fromY = this.yAxis.canvasToGraph(y);
 
-	this.splineeditor.addControlPoint(fromX, fromY);
+	this.lineeditor.addControlPoint(fromX, fromY);
 };
 
 
 
 module.exports = Graph;
-},{"./axis.js":1,"./mousecontrol.js":6,"./referencelines.js":8,"./splineeditor.js":9}],4:[function(require,module,exports){
+},{"./axis.js":1,"./lineeditor.js":5,"./mousecontrol.js":7,"./referencelines.js":9}],4:[function(require,module,exports){
 function Line() {
+	this.points = [];
+	this.color = '#FF0000';
 }
-
 
 Line.prototype.draw = function(context, toX, toY) {
 
+	context.strokeStyle = this.color;
 
+	context.beginPath();
+
+	context.moveTo(toX(this.points[0].x), toY(this.points[0].y));
+	
+	for(var i = 1; i < this.points.length; i++) {
+		context.lineTo(toX(this.points[i].x), toY(this.points[i].y));
+	}
+
+	context.stroke();
 
 };
 
 module.exports = Line;
 },{}],5:[function(require,module,exports){
+var ControlPoint = require('./controlpoint.js');
+var Line = require('./line.js');
+
+
+function LineEditor(graph) {
+
+	this.line = new Line();
+	this.controlpoints = [];
+
+	this.line.points = this.controlpoints;
+
+	this.graph = graph;
+
+}
+
+
+LineEditor.prototype.draw = function(context, toX, toY) {
+
+	this.controlpoints.sort(function(a, b) {
+		return a.x - b.x;
+	});
+
+	this.line.draw(context, toX, toY);
+
+	for(var i = 0; i < this.controlpoints.length; i++) {
+		this.controlpoints[i].draw(context, toX, toY);
+	}
+
+};	
+
+LineEditor.prototype.addControlPoint = function(x, y) {
+
+	cp = new ControlPoint(x, y, this, this.graph);
+
+	this.controlpoints.push(cp);
+	this.graph.mousecontrol.addObject(cp);
+};
+
+LineEditor.prototype.removeControlPoint = function(o) {
+
+	this.graph.mousecontrol.removeObject(o);
+
+	var i = this.controlpoints.indexOf(o);
+
+	if(i > -1) {
+		this.controlpoints.splice(i, 1);
+	}
+};
+
+
+LineEditor.prototype.toBuffer = function() {
+
+};
+
+
+module.exports = LineEditor;
+},{"./controlpoint.js":2,"./line.js":4}],6:[function(require,module,exports){
 
 
 var Graph = require("./graph.js");
@@ -280,7 +348,7 @@ function draw() {
 }
 
 window.onresize();
-},{"./graph.js":3}],6:[function(require,module,exports){
+},{"./graph.js":3}],7:[function(require,module,exports){
 function MouseControl(graph) {
 
 	this.active = false;
@@ -418,7 +486,7 @@ MouseControl.prototype.onscroll = function(e) {
 
 
 module.exports = MouseControl; // Singleton
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 function RangeSlider(orientation, axis) {
 
 	this.orientation = orientation ? 
@@ -452,7 +520,7 @@ RangeSlider.prototype.ondblclick = function() {
 };
 
 module.exports = RangeSlider;
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 
 
 function ReferenceLines(principal_axis, secondary_axis) {
@@ -522,55 +590,4 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
 module.exports = ReferenceLines;
-},{}],9:[function(require,module,exports){
-var ControlPoint = require('./controlpoint.js');
-var Line = require('./line.js');
-
-
-function SplineEditor(graph) {
-
-	this.line = new Line();
-	this.controlpoints = [];
-
-	this.graph = graph;
-
-}
-
-
-SplineEditor.prototype.draw = function(context, toX, toY) {
-
-	this.line.draw(context, toX, toY);
-
-	for(var i = 0; i < this.controlpoints.length; i++) {
-		this.controlpoints[i].draw(context, toX, toY);
-	}
-
-};	
-
-SplineEditor.prototype.addControlPoint = function(x, y) {
-
-	cp = new ControlPoint(x, y, this, this.graph);
-
-	this.controlpoints.push(cp);
-	this.graph.mousecontrol.addObject(cp);
-};
-
-SplineEditor.prototype.removeControlPoint = function(o) {
-
-	this.graph.mousecontrol.removeObject(o);
-
-	var i = this.controlpoints.indexOf(o);
-
-	if(i > -1) {
-		this.controlpoints.splice(i, 1);
-	}
-};
-
-
-SplineEditor.prototype.toBuffer = function() {
-
-};
-
-
-module.exports = SplineEditor;
-},{"./controlpoint.js":2,"./line.js":4}]},{},[5]);
+},{}]},{},[6]);

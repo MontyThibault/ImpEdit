@@ -18,7 +18,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
 	var scales = [Math.floor(scalefactor), Math.floor(scalefactor) - 1];
-	var scalelevels = 1;
+	var scalelevels = 2;
 	
 
 

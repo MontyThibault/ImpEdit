@@ -1,4 +1,4 @@
-var SplineEditor = require('./splineeditor.js');
+var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
 var MouseControl = require('./mousecontrol.js');
 var ReferenceLines = require('./referencelines.js');
@@ -42,9 +42,9 @@ function Graph(canvas) {
 
 
 	this.mousecontrol = new MouseControl(this);
-	this.splineeditor = new SplineEditor(this);
+	this.lineeditor = new LineEditor(this);
 
-	this.splineeditor.addControlPoint(5, 5);
+	this.lineeditor.addControlPoint(5, 5);
 
 
 
@@ -75,7 +75,7 @@ Graph.prototype.draw = function(context) {
 	// this.xAxis.drawLabels(context, toX, toY);
 	// this.yAxis.drawLabels(context, toX, toY);
 
-	this.splineeditor.draw(context, toX, toY);
+	this.lineeditor.draw(context, toX, toY);
 };
 
 
@@ -101,7 +101,7 @@ Graph.prototype.addControlPoint = function(x, y) {
 	var fromX = this.xAxis.canvasToGraph(x),
 		fromY = this.yAxis.canvasToGraph(y);
 
-	this.splineeditor.addControlPoint(fromX, fromY);
+	this.lineeditor.addControlPoint(fromX, fromY);
 };
 
 
