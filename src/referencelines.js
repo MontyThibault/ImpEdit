@@ -47,6 +47,10 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 		var begin = Math.ceil(this.axis.min / offset) * offset,
 			end = Math.floor(this.axis.max / offset) * offset;
 
+
+
+		context.beginPath();
+
 		for(var j = begin; j <= end; j += offset) {
 
 			var startP = j,
@@ -54,15 +58,32 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 				startS = this.saxis.min,
 				endS = this.saxis.max;
 
-			context.beginPath();
-
+			
 			this.axis.orientation(moveTo, startP, startS);
 			this.axis.orientation(lineTo, endP, endS);
-
-			context.stroke();
-
+			
 		}
+
+		context.stroke();
 	}
+
+
+	// Draw axis lines in blue
+
+	context.strokeStyle = '#0000FF';
+
+	var startP = 0,
+		endP = 0,
+		startS = this.saxis.min,
+		endS = this.saxis.max;
+
+	context.beginPath();
+
+	this.axis.orientation(moveTo, startP, startS);
+	this.axis.orientation(lineTo, endP, endS);
+
+	context.stroke();
+
 };
 
 
