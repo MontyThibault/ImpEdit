@@ -32,7 +32,7 @@ SplineEditor.prototype.addControlPoint = function(x, y) {
 
 SplineEditor.prototype.removeControlPoint = function(o) {
 
-	this.graph.mousecontrol.removeObject(cp);
+	this.graph.mousecontrol.removeObject(o);
 
 	var i = this.controlpoints.indexOf(o);
 
