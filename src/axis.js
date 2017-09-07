@@ -3,10 +3,11 @@ var RangeSlider = require('./rangeslider.js');
 
 function Axis(orientation, min, max, get_full_extent) {
 
-	this.orientation = orientation ? 
+	this.orientation = orientation;
+	this.orientationf = orientation ? 
 		function(f, x, y) { f(x, y); } : function(f, x, y) { f(y, x); };
 
-	this.rangeslider = new RangeSlider(orientation, this);
+	this.rangeslider = new RangeSlider(this);
 	this.min = min;
 	this.max = max;
 
