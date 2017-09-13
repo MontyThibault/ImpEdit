@@ -7,14 +7,22 @@ function Axis(orientation, min, max, get_full_extent) {
 	this.orientation = orientation;
 	this.orientationf = orientation ? 
 		function(f, x, y) { f(x, y); } : function(f, x, y) { f(y, x); };
-
-	this.rangeslider = new RangeSlider(this);
+		
 	this.min = min;
 	this.max = max;
+
+	this.minLimit = -1e2;
+	this.maxLimit = 1e2;
 
 	// Canvas.width/canvas.height
 	this.get_full_extent = get_full_extent;
 
+}
+
+
+Axis.prototype._limits = function() {
+	this.min = (this.min > this.minLimit) ? this.min : this.minLimit;
+	this.max = (this.max < this.maxLimit) ? this.max : this.maxLimit;
 }
 
 
@@ -33,22 +41,14 @@ Axis.prototype.canvasToGraph = function(x) {
 
 };
 
-Axis.prototype.drawLines = function(context) {
-
-	
-
-};
-
-Axis.prototype.drawLabels = function(context) {
-
-};
-
 Axis.prototype.zoomIn = function() {
 	var min = this.min * 0.9 + this.max * 0.1;
 	var max = this.min * 0.1 + this.max * 0.9;
 
 	this.min = min;
 	this.max = max;
+
+	this._limits();
 };
 
 Axis.prototype.zoomOut = function() {
@@ -57,18 +57,39 @@ Axis.prototype.zoomOut = function() {
 
 	this.min = min;
 	this.max = max;
+
+	this._limits();
 };
 
-Axis.prototype.pan = function(diff) {
+Axis.prototype.panCanvas = function(diff) {
 
 	var offset = this.graphToCanvas(this.min);
 
 	diff = this.canvasToGraph(diff + offset) - this.min;
 
+	this.panGraph(diff);
+
+};
+
+
+Axis.prototype.panGraph = function(diff) {
+
+
+	if(this.min - diff < this.minLimit || 
+		this.max - diff > this.maxLimit) {
+
+		// Boundary border
+		return;
+
+	}
+
 	this.min -= diff;
 	this.max -= diff;
 
-};
+	this._limits();
+
+}
+
 
 
 
@@ -132,6 +153,7 @@ var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
 var MouseControl = require('./mousecontrol.js');
 var ReferenceLines = require('./referencelines.js');
+var RangeSlider = require('./rangeslider.js');
 
 
 function prevent_default_set_context(that, f) {
@@ -170,12 +192,20 @@ function Graph(canvas) {
 	this.xAxisReference = new ReferenceLines(this.xAxis, this.yAxis);
 	this.yAxisReference = new ReferenceLines(this.yAxis, this.xAxis);
 
+	this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis);
+	this.yAxisRange = new RangeSlider(this.yAxis, this.xAxis);
+
 
 	this.mousecontrol = new MouseControl(this);
 	this.lineeditor = new LineEditor(this);
 
+
+	///
 	this.lineeditor.addControlPoint(5, 5);
 
+	this.mousecontrol.addObject(this.xAxisRange);
+	this.mousecontrol.addObject(this.yAxisRange);
+	///
 
 
 	canvas.onmousemove = pdsc(this.mousecontrol, 
@@ -203,6 +233,10 @@ Graph.prototype.draw = function(context) {
 	this.xAxisReference.drawLabels(context, toX, toY);
 	this.yAxisReference.drawLabels(context, toX, toY);
 
+
+	this.xAxisRange.draw(context, toX, toY);
+	this.yAxisRange.draw(context, toX, toY);
+
 	// this.xAxis.drawLines(context, toX, toY);
 	// this.yAxis.drawLines(context, toX, toY);
 	// this.xAxis.drawLabels(context, toX, toY);
@@ -224,8 +258,8 @@ Graph.prototype.zoomOut = function() {
 
 Graph.prototype.pan = function(diffX, diffY) {
 
-	this.xAxis.pan(diffX);
-	this.yAxis.pan(diffY);
+	this.xAxis.panCanvas(diffX);
+	this.yAxis.panCanvas(diffY);
 };
 
 
@@ -240,7 +274,7 @@ Graph.prototype.addControlPoint = function(x, y) {
 
 
 module.exports = Graph;
-},{"./axis.js":1,"./lineeditor.js":5,"./mousecontrol.js":7,"./referencelines.js":9}],4:[function(require,module,exports){
+},{"./axis.js":1,"./lineeditor.js":5,"./mousecontrol.js":7,"./rangeslider.js":8,"./referencelines.js":9}],4:[function(require,module,exports){
 function Line() {
 	this.points = [];
 	this.color = '#FF0000';
@@ -353,6 +387,24 @@ function draw() {
 
 window.onresize();
 },{"./graph.js":3}],7:[function(require,module,exports){
+
+function debounce(f, delay) {
+  var timer = null;
+
+  return function () {
+    var context = this, 
+    	args = arguments;
+
+    clearTimeout(timer);
+
+    timer = setTimeout(function () {
+      f.apply(context, args);
+    }, delay);
+  };
+}
+
+
+
 function MouseControl(graph) {
 
 	this.active = false;
@@ -466,6 +518,10 @@ MouseControl.prototype.onmousedown = function(e) {
 
 MouseControl.prototype.onmouseup = function(e) {
 	this.mousedown = false;
+
+	if(this.active && this.active.onmouseup) {
+		this.active.onmouseup();
+	}
 };
 
 MouseControl.prototype.ondblclick = function(e) {
@@ -491,19 +547,102 @@ MouseControl.prototype.onscroll = function(e) {
 
 module.exports = MouseControl; // Singleton
 },{}],8:[function(require,module,exports){
-function RangeSlider(axis) {
 
-	this.axis = axis;
+// Throughout this class, p refers to "principal" and s refers to
+// "secondary", as a generic version of x/y or y/x, depending on the orientation.
 
 
-	// These will be delegated to the axis class.
-	this.minLimit;
-	this.maxLimit;
+function RangeSlider(principal_axis, secondary_axis) {
+
+	this.axis = principal_axis;
+	this.saxis = secondary_axis;
+
+	this.strokeColor;
+
+	this.startP;
+	this.endP;
+	this.midS;
+	this.minP;
+	this.maxP;
+
+	this.prevDragX = undefined;
+	this.prevDragY = undefined;
+
+
+	this.onactiveend();
+
 }
 
 
 RangeSlider.prototype.draw = function(context, toX, toY) {
+
+	if(this.axis.orientation) {
+
+		var toP = toX,
+			toS = toY;
+		
+		var startX = 0,
+		    startY = toY(this.saxis.max) - 20,
+		    width = toX(this.axis.max),
+		    height = 20;
+
+	} else {
+
+		var toP = toY,
+			toS = toX;
 	
+		var startX = toX(this.saxis.max) - 20,
+		    startY = 0,
+		    width = 20,
+		    height = toY(this.axis.max);
+
+	}
+
+	context.fillStyle = '#F5F5F5';
+	context.fillRect(startX, startY, width, height);
+
+
+
+	this.minP = 20,
+	this.maxP = toP(this.axis.max) - 20;
+
+	this.midS = toS(this.saxis.max) - 10;
+
+
+	var o = this.axis.orientation;
+	function arc(x, y, r, sa, ea) {
+		if(o) {
+			context.arc(x, y, r, sa, ea);
+		} else {
+			context.arc(y, x, r, sa + Math.PI / 2, ea + Math.PI / 2);
+		}
+	}
+
+
+	var diff = this.maxP - this.minP;
+
+	this.startP = this.minP + ((this.axis.min - this.axis.minLimit) / 
+		(this.axis.maxLimit - this.axis.minLimit) * diff),
+
+	this.endP = this.minP + ((this.axis.max  - this.axis.minLimit) / 
+		(this.axis.maxLimit - this.axis.minLimit) * diff);
+	
+
+	context.strokeStyle = this.strokeColor;
+	context.beginPath();
+
+	// Draw first circle-half & dot
+	arc(this.startP, this.midS, 1, 0, 2 * Math.PI);
+	
+
+	// Draw second circle-half & dot
+	arc(this.endP, this.midS, 1, 0, 2 * Math.PI);
+
+
+	// Draw connecting lines
+
+
+	context.stroke();
 	
 
 };
@@ -511,22 +650,86 @@ RangeSlider.prototype.draw = function(context, toX, toY) {
 
 RangeSlider.prototype.distanceTo = function(x, y) {
 
+	if(this.axis.orientation) {
+		var p = x,
+			s = y;
+	} else {
+		var s = x,
+			p = y;
+	}
+
+	if(p < this.startP) {
+
+		return Math.sqrt((this.startP - p) * (this.startP - p) + (this.midS - s) * (this.midS - s));
+	
+	} else if(p > this.endP) {
+
+		return Math.sqrt((this.endP - p) * (this.endP - p) + (this.midS - s) * (this.midS - s));
+
+	} else {
+
+		return Math.abs(this.midS - s);
+
+	}
+
 };
 
 
-RangeSlider.prototype.ondrag = function() {
+RangeSlider.prototype.ondrag = function(x, y) {
+
+	if(this.prevDragX !== undefined) {
+
+		if(this.axis.orientation) {
+			var dp = x - this.prevDragX;
+		} else {
+			var dp = y - this.prevDragY;
+		}
+
+
+		var visualDiff = this.maxP - this.minP,
+			graphDiff = this.axis.maxLimit - this.axis.minLimit;
+
+
+		// dx / visualDiff = m / graphDiff
+		var m = -graphDiff * dp / visualDiff;
+
+		this.axis.panGraph(m);
+
+	}
+
+	this.prevDragX = x;
+	this.prevDragY = y;
 
 };
 
-RangeSlider.prototype.onactive = function() {
+RangeSlider.prototype.onmouseup = function() {
+
+	this.prevDragX = undefined;
+	this.prevDragY = undefined;
+
+}
+
+RangeSlider.prototype.onactivestart = function() {
+
+	this.strokeColor = "#FF0000";
 
 };
+
+RangeSlider.prototype.onactiveend = function() {
+
+	this.strokeColor = '#000000';
+
+};
+
 
 RangeSlider.prototype.ondblclick = function() {
-
+	this.axis.min = this.axis.minLimit;
+	this.axis.max = this.axis.maxLimit;
 };
 
+
 module.exports = RangeSlider;
+
 },{}],9:[function(require,module,exports){
 
 
@@ -563,7 +766,9 @@ ReferenceLines.prototype._drawLines = function(context, toX, toY) {
 		Math.log(this.line_multiples);
 
 
-	var scales = [Math.floor(scalefactor), Math.floor(scalefactor) - 1];
+	var scales = [Math.floor(scalefactor) - 1, Math.floor(scalefactor)];
+
+	// This should be implemented as a ratio of screen width/height
 	var scalelevels = 2;
 	
 
