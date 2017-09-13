@@ -38,8 +38,10 @@ function Graph(canvas) {
 	this.xAxis = new Axis(true, 0, 10, function() { return canvas.width; });
 	this.yAxis = new Axis(false, 0, 10, function() { return canvas.height; });
 
-	this.xAxisReference = new ReferenceLines(this.xAxis, this.yAxis);
-	this.yAxisReference = new ReferenceLines(this.yAxis, this.xAxis);
+	this.reference = new ReferenceLines(this.xAxis, this.yAxis);
+
+	// this.xAxisReference = new ReferenceLinesAxis(this.xAxis, this.yAxis);
+	// this.yAxisReference = new ReferenceLinesAxis(this.yAxis, this.xAxis);
 
 	this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis);
 	this.yAxisRange = new RangeSlider(this.yAxis, this.xAxis);
@@ -76,11 +78,13 @@ Graph.prototype.draw = function(context) {
 		toY = function(x) { return yAxis.graphToCanvas.call(yAxis, x); };
 
 
-	this.xAxisReference.draw(context, toX, toY);
-	this.yAxisReference.draw(context, toX, toY);
+	this.reference.draw(context, toX, toY);
 
-	this.xAxisReference.drawLabels(context, toX, toY);
-	this.yAxisReference.drawLabels(context, toX, toY);
+	// this.xAxisReference.draw(context, toX, toY);
+	// this.yAxisReference.draw(context, toX, toY);
+
+	// this.xAxisReference.drawLabels(context, toX, toY);
+	// this.yAxisReference.drawLabels(context, toX, toY);
 
 
 	this.xAxisRange.draw(context, toX, toY);
