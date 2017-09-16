@@ -1,4 +1,6 @@
 *.mp3
+*.ogg
+
 non-es2015
 
 # Logs
