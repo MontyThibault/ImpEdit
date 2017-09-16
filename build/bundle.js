@@ -1,4 +1,337 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var ComplexArray = function () {
+  function ComplexArray(other) {
+    var arrayType = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : Float32Array;
+
+    _classCallCheck(this, ComplexArray);
+
+    if (other instanceof ComplexArray) {
+      // Copy constuctor.
+      this.ArrayType = other.ArrayType;
+      this.real = new this.ArrayType(other.real);
+      this.imag = new this.ArrayType(other.imag);
+    } else {
+      this.ArrayType = arrayType;
+      // other can be either an array or a number.
+      this.real = new this.ArrayType(other);
+      this.imag = new this.ArrayType(this.real.length);
+    }
+
+    this.length = this.real.length;
+  }
+
+  _createClass(ComplexArray, [{
+    key: 'toString',
+    value: function toString() {
+      var components = [];
+
+      this.forEach(function (value, i) {
+        components.push('(' + value.real.toFixed(2) + ', ' + value.imag.toFixed(2) + ')');
+      });
+
+      return '[' + components.join(', ') + ']';
+    }
+  }, {
+    key: 'forEach',
+    value: function forEach(iterator) {
+      var n = this.length;
+      // For gc efficiency, re-use a single object in the iterator.
+      var value = Object.seal(Object.defineProperties({}, {
+        real: { writable: true }, imag: { writable: true }
+      }));
+
+      for (var i = 0; i < n; i++) {
+        value.real = this.real[i];
+        value.imag = this.imag[i];
+        iterator(value, i, n);
+      }
+    }
+
+    // In-place mapper.
+
+  }, {
+    key: 'map',
+    value: function map(mapper) {
+      var _this = this;
+
+      this.forEach(function (value, i, n) {
+        mapper(value, i, n);
+        _this.real[i] = value.real;
+        _this.imag[i] = value.imag;
+      });
+
+      return this;
+    }
+  }, {
+    key: 'conjugate',
+    value: function conjugate() {
+      return new ComplexArray(this).map(function (value) {
+        value.imag *= -1;
+      });
+    }
+  }, {
+    key: 'magnitude',
+    value: function magnitude() {
+      var mags = new this.ArrayType(this.length);
+
+      this.forEach(function (value, i) {
+        mags[i] = Math.sqrt(value.real * value.real + value.imag * value.imag);
+      });
+
+      return mags;
+    }
+  }]);
+
+  return ComplexArray;
+}();
+
+exports.default = ComplexArray;
+},{}],2:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.ComplexArray = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+exports.FFT = FFT;
+exports.InvFFT = InvFFT;
+exports.frequencyMap = frequencyMap;
+
+var _complex_array = require('./complex_array');
+
+var _complex_array2 = _interopRequireDefault(_complex_array);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+// Math constants and functions we need.
+var PI = Math.PI;
+var SQRT1_2 = Math.SQRT1_2;
+
+function FFT(input) {
+  return ensureComplexArray(input).FFT();
+};
+
+function InvFFT(input) {
+  return ensureComplexArray(input).InvFFT();
+};
+
+function frequencyMap(input, filterer) {
+  return ensureComplexArray(input).frequencyMap(filterer);
+};
+
+var ComplexArray = exports.ComplexArray = function (_baseComplexArray) {
+  _inherits(ComplexArray, _baseComplexArray);
+
+  function ComplexArray() {
+    _classCallCheck(this, ComplexArray);
+
+    return _possibleConstructorReturn(this, (ComplexArray.__proto__ || Object.getPrototypeOf(ComplexArray)).apply(this, arguments));
+  }
+
+  _createClass(ComplexArray, [{
+    key: 'FFT',
+    value: function FFT() {
+      return fft(this, false);
+    }
+  }, {
+    key: 'InvFFT',
+    value: function InvFFT() {
+      return fft(this, true);
+    }
+
+    // Applies a frequency-space filter to input, and returns the real-space
+    // filtered input.
+    // filterer accepts freq, i, n and modifies freq.real and freq.imag.
+
+  }, {
+    key: 'frequencyMap',
+    value: function frequencyMap(filterer) {
+      return this.FFT().map(filterer).InvFFT();
+    }
+  }]);
+
+  return ComplexArray;
+}(_complex_array2.default);
+
+function ensureComplexArray(input) {
+  return input instanceof ComplexArray && input || new ComplexArray(input);
+}
+
+function fft(input, inverse) {
+  var n = input.length;
+
+  if (n & n - 1) {
+    return FFT_Recursive(input, inverse);
+  } else {
+    return FFT_2_Iterative(input, inverse);
+  }
+}
+
+function FFT_Recursive(input, inverse) {
+  var n = input.length;
+
+  if (n === 1) {
+    return input;
+  }
+
+  var output = new ComplexArray(n, input.ArrayType);
+
+  // Use the lowest odd factor, so we are able to use FFT_2_Iterative in the
+  // recursive transforms optimally.
+  var p = LowestOddFactor(n);
+  var m = n / p;
+  var normalisation = 1 / Math.sqrt(p);
+  var recursive_result = new ComplexArray(m, input.ArrayType);
+
+  // Loops go like O(n Σ p_i), where p_i are the prime factors of n.
+  // for a power of a prime, p, this reduces to O(n p log_p n)
+  for (var j = 0; j < p; j++) {
+    for (var i = 0; i < m; i++) {
+      recursive_result.real[i] = input.real[i * p + j];
+      recursive_result.imag[i] = input.imag[i * p + j];
+    }
+    // Don't go deeper unless necessary to save allocs.
+    if (m > 1) {
+      recursive_result = fft(recursive_result, inverse);
+    }
+
+    var del_f_r = Math.cos(2 * PI * j / n);
+    var del_f_i = (inverse ? -1 : 1) * Math.sin(2 * PI * j / n);
+    var f_r = 1;
+    var f_i = 0;
+
+    for (var _i = 0; _i < n; _i++) {
+      var _real = recursive_result.real[_i % m];
+      var _imag = recursive_result.imag[_i % m];
+
+      output.real[_i] += f_r * _real - f_i * _imag;
+      output.imag[_i] += f_r * _imag + f_i * _real;
+
+      var _ref = [f_r * del_f_r - f_i * del_f_i, f_i = f_r * del_f_i + f_i * del_f_r];
+      f_r = _ref[0];
+      f_i = _ref[1];
+    }
+  }
+
+  // Copy back to input to match FFT_2_Iterative in-placeness
+  // TODO: faster way of making this in-place?
+  for (var _i2 = 0; _i2 < n; _i2++) {
+    input.real[_i2] = normalisation * output.real[_i2];
+    input.imag[_i2] = normalisation * output.imag[_i2];
+  }
+
+  return input;
+}
+
+function FFT_2_Iterative(input, inverse) {
+  var n = input.length;
+
+  var output = BitReverseComplexArray(input);
+  var output_r = output.real;
+  var output_i = output.imag;
+  // Loops go like O(n log n):
+  //   width ~ log n; i,j ~ n
+  var width = 1;
+  while (width < n) {
+    var del_f_r = Math.cos(PI / width);
+    var del_f_i = (inverse ? -1 : 1) * Math.sin(PI / width);
+    for (var i = 0; i < n / (2 * width); i++) {
+      var f_r = 1;
+      var f_i = 0;
+      for (var j = 0; j < width; j++) {
+        var l_index = 2 * i * width + j;
+        var r_index = l_index + width;
+
+        var left_r = output_r[l_index];
+        var left_i = output_i[l_index];
+        var right_r = f_r * output_r[r_index] - f_i * output_i[r_index];
+        var right_i = f_i * output_r[r_index] + f_r * output_i[r_index];
+
+        output_r[l_index] = SQRT1_2 * (left_r + right_r);
+        output_i[l_index] = SQRT1_2 * (left_i + right_i);
+        output_r[r_index] = SQRT1_2 * (left_r - right_r);
+        output_i[r_index] = SQRT1_2 * (left_i - right_i);
+
+        var _ref2 = [f_r * del_f_r - f_i * del_f_i, f_r * del_f_i + f_i * del_f_r];
+        f_r = _ref2[0];
+        f_i = _ref2[1];
+      }
+    }
+    width <<= 1;
+  }
+
+  return output;
+}
+
+function BitReverseIndex(index, n) {
+  var bitreversed_index = 0;
+
+  while (n > 1) {
+    bitreversed_index <<= 1;
+    bitreversed_index += index & 1;
+    index >>= 1;
+    n >>= 1;
+  }
+  return bitreversed_index;
+}
+
+function BitReverseComplexArray(array) {
+  var n = array.length;
+  var flips = new Set();
+
+  for (var i = 0; i < n; i++) {
+    var r_i = BitReverseIndex(i, n);
+
+    if (flips.has(i)) continue;
+
+    var _ref3 = [array.real[r_i], array.real[i]];
+    array.real[i] = _ref3[0];
+    array.real[r_i] = _ref3[1];
+    var _ref4 = [array.imag[r_i], array.imag[i]];
+    array.imag[i] = _ref4[0];
+    array.imag[r_i] = _ref4[1];
+
+
+    flips.add(r_i);
+  }
+
+  return array;
+}
+
+function LowestOddFactor(n) {
+  var sqrt_n = Math.sqrt(n);
+  var factor = 3;
+
+  while (factor <= sqrt_n) {
+    if (n % factor === 0) return factor;
+    factor += 2;
+  }
+  return n;
+}
+},{"./complex_array":1}],3:[function(require,module,exports){
+
+var jsfft = require('jsfft');
+
+
 
 function Audio(canvas, context) {
 
@@ -6,66 +339,118 @@ function Audio(canvas, context) {
 
 
 	var myAudio = document.querySelector('audio');
-	myAudio.crossOrigin = "anonymous";
-
-	var source = audioContext.createMediaElementSource(myAudio);
-	
-	var analyser = audioContext.createAnalyser();
 
 
-	source.connect(analyser);
-	analyser.connect(audioContext.destination);
+	var source = audioContext.createMediaElementSource(myAudio);	
 
-	/////////////////////////
+	var block_size = 16384;
 
+	var sample_blend = 30;
 
-
-	analyser.fftSize = 2048;
-	var bufferLength = analyser.frequencyBinCount;
-	var dataArray = new Uint8Array(bufferLength);
-	analyser.getByteTimeDomainData(dataArray);
+	var z_array = new jsfft.ComplexArray(block_size, Float32Array);
 
 
-	// draw an oscilloscope of the current audio source
+	window.cutoff = 500;
 
-	function draw() {
 
-	  drawVisual = requestAnimationFrame(draw);
+	var lastSamples = new Float32Array(2);
 
-	  window.crypto.getRandomValues(dataArray);
+	var processor = audioContext.createScriptProcessor(block_size, 2, 2);
+	processor.onaudioprocess = function(audioProcessingEvent) {
 
-	  analyser.getByteTimeDomainData(dataArray);
+		var inputBuffer = audioProcessingEvent.inputBuffer;
+		var outputBuffer = audioProcessingEvent.outputBuffer;
 
-	  context.fillStyle = 'rgb(200, 200, 200)';
-	  context.fillRect(0, 0, canvas.width, canvas.height);
+		for (var channel = 0; channel < outputBuffer.numberOfChannels; channel++) {
 
-	  context.lineWidth = 2;
-	  context.strokeStyle = 'rgb(0, 0, 0)';
+			z_array.real = inputBuffer.getChannelData(channel);
+			z_array.imag.fill(0);
 
-	  context.beginPath();
+			z_array.frequencyMap((freq, i, n) => {
 
-	  var sliceWidth = canvas.width * 1.0 / bufferLength;
-	  var x = 0;
+				if(i > window.cutoff) {
+					freq.real = 0;
+					freq.imag = 0;
+				}
 
-	  for (var i = 0; i < bufferLength; i++) {
+			});
 
-	    var v = dataArray[i] / 128.0;
-	    var y = v * canvas.height / 2;
+			console.log(z_array.real[0]);
+			console.log(lastSamples[channel]);
+			console.log("--");
 
-	    if (i === 0) {
-	      context.moveTo(x, y);
-	    } else {
-	      context.lineTo(x, y);
+
+			for(var i = 1; i < sample_blend; i++) {
+
+				var f = i / sample_blend;
+
+				z_array.real[i - 1] *= f;
+				z_array.real[i - 1] += lastSamples[channel] * (1 - f)
+
+			}
+
+
+			
+
+		    outputBuffer.copyToChannel(z_array.real, channel, 0);
+		    lastSamples[channel] = z_array.real[block_size - 2];
+
 	    }
 
-	    x += sliceWidth;
-	  }
-
-	  context.lineTo(canvas.width, canvas.height / 2);
-	  context.stroke();
 	};
 
-	draw();
+
+	source.connect(processor);
+	processor.connect(audioContext.destination);
+
+
+
+	
+	
+
+	// var dataArray = new Float32Array(block_size);
+
+	// // draw an oscilloscope of the current audio source
+
+	// function draw() {
+
+	// drawVisual = requestAnimationFrame(draw);
+
+	// 	analyser.getByteTimeDomainData(dataArray);
+
+	// 	context.fillStyle = 'rgb(200, 200, 200)';
+	// 	context.fillRect(0, 0, canvas.width, canvas.height);
+
+	// 	context.lineWidth = 2;
+	// 	context.strokeStyle = 'rgb(0, 0, 0)';
+
+	// 	context.beginPath();
+
+	// 	var sliceWidth = canvas.width * 1.0 / bufferLength;
+	// 	var x = 0;
+
+	// 	for (var i = 0; i < bufferLength; i++) {
+
+	// 			var v = dataArray[i] / 128.0;
+	// 		var y = v * canvas.height / 2;
+
+	// 		if (i === 0) {
+	// 		  context.moveTo(x, y);
+	// 		} else {
+	// 		  context.lineTo(x, y);
+	// 		}
+
+	// 		x += sliceWidth;
+	// 	}
+
+	// 	// context.lineTo(canvas.width, canvas.height / 2);
+	// 	context.lineTo(canvas.width, y);
+
+	// 	context.stroke();
+	// };
+
+	// draw();
+	
 
 }
 
@@ -73,7 +458,7 @@ function Audio(canvas, context) {
 
 
 module.exports = Audio;
-},{}],2:[function(require,module,exports){
+},{"jsfft":2}],4:[function(require,module,exports){
 var RangeSlider = require('./rangeslider.js');
 
 
@@ -169,7 +554,7 @@ Axis.prototype.panGraph = function(diff) {
 
 
 module.exports = Axis;
-},{"./rangeslider.js":9}],3:[function(require,module,exports){
+},{"./rangeslider.js":11}],5:[function(require,module,exports){
 function ControlPoint(x, y, editor, graph) {
 	this.x = x;
 	this.y = y;
@@ -223,7 +608,7 @@ ControlPoint.prototype.ondblclick = function() {
 };
 
 module.exports = ControlPoint;
-},{}],4:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
 var MouseControl = require('./mousecontrol.js');
@@ -343,7 +728,7 @@ Graph.prototype.addControlPoint = function(x, y) {
 
 
 module.exports = Graph;
-},{"./axis.js":2,"./lineeditor.js":6,"./mousecontrol.js":8,"./rangeslider.js":9,"./referencelines.js":10}],5:[function(require,module,exports){
+},{"./axis.js":4,"./lineeditor.js":8,"./mousecontrol.js":10,"./rangeslider.js":11,"./referencelines.js":12}],7:[function(require,module,exports){
 function Line() {
 	this.points = [];
 	this.color = '#FF0000';
@@ -366,7 +751,7 @@ Line.prototype.draw = function(context, toX, toY) {
 };
 
 module.exports = Line;
-},{}],6:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 var Line = require('./line.js');
 
@@ -423,7 +808,7 @@ LineEditor.prototype.toBuffer = function() {
 
 
 module.exports = LineEditor;
-},{"./controlpoint.js":3,"./line.js":5}],7:[function(require,module,exports){
+},{"./controlpoint.js":5,"./line.js":7}],9:[function(require,module,exports){
 
 
 var Graph = require("./graph.js");
@@ -466,7 +851,7 @@ var eq_canvas = document.getElementById('eq');
 var eq_context = eq_canvas.getContext('2d');
 
 Audio(eq_canvas, eq_context);
-},{"./audio.js":1,"./graph.js":4}],8:[function(require,module,exports){
+},{"./audio.js":3,"./graph.js":6}],10:[function(require,module,exports){
 
 function debounce(f, delay) {
   var timer = null;
@@ -626,7 +1011,7 @@ MouseControl.prototype.onscroll = function(e) {
 
 
 module.exports = MouseControl; // Singleton
-},{}],9:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 
 // Throughout this class, p refers to "principal" and s refers to
 // "secondary", as a generic version of x/y or y/x, depending on the orientation.
@@ -810,7 +1195,7 @@ RangeSlider.prototype.ondblclick = function() {
 
 module.exports = RangeSlider;
 
-},{}],10:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var ReferenceLinesAxis = require('./referencelinesaxis.js');
 
 
@@ -908,7 +1293,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
 module.exports = ReferenceLines;
-},{"./referencelinesaxis.js":11}],11:[function(require,module,exports){
+},{"./referencelinesaxis.js":13}],13:[function(require,module,exports){
 
 
 function ReferenceLinesAxis(principal_axis, secondary_axis) {
@@ -1079,4 +1464,4 @@ ReferenceLinesAxis.prototype.drawLabels = function(context, toX, toY) {
 
 
 module.exports = ReferenceLinesAxis;
-},{}]},{},[7]);
+},{}]},{},[9]);
