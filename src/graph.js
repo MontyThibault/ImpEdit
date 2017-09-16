@@ -66,6 +66,8 @@ function Graph(canvas) {
 	canvas.onmouseup = pdsc(this.mousecontrol, this.mousecontrol.onmouseup);
 	canvas.ondblclick = pdsc(this.mousecontrol, this.mousecontrol.ondblclick);
 	canvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
+
+	canvas.onmouseout = canvas.onmouseup;
 }
 
 
@@ -80,20 +82,8 @@ Graph.prototype.draw = function(context) {
 
 	this.reference.draw(context, toX, toY);
 
-	// this.xAxisReference.draw(context, toX, toY);
-	// this.yAxisReference.draw(context, toX, toY);
-
-	// this.xAxisReference.drawLabels(context, toX, toY);
-	// this.yAxisReference.drawLabels(context, toX, toY);
-
-
 	this.xAxisRange.draw(context, toX, toY);
 	this.yAxisRange.draw(context, toX, toY);
-
-	// this.xAxis.drawLines(context, toX, toY);
-	// this.yAxis.drawLines(context, toX, toY);
-	// this.xAxis.drawLabels(context, toX, toY);
-	// this.yAxis.drawLabels(context, toX, toY);
 
 	this.lineeditor.draw(context, toX, toY);
 };

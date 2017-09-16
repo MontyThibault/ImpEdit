@@ -128,7 +128,6 @@ ReferenceLinesAxis.prototype._drawLabel = function(context, toX, toY, offset, te
 	context.textAlign = 'center';
 	context.textBaseline = 'middle';
 	
-	// Returns undefined for some reason
 	var width = context.measureText(text).width;
 
 	// var width = 40;
