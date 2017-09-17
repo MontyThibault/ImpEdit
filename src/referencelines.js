@@ -25,7 +25,7 @@ ReferenceLines.prototype._getDrawingArray = function(ref) {
 
 
 	// ex. scalelevels = 2 means to draw two "levels" of reference lines
-	// with shading proportional to (scalefactor - refscale) / scalelevels.
+	// with shading proportional to canvas distance.
 
 	// Fractional values are allowed. 
 
@@ -40,18 +40,17 @@ ReferenceLines.prototype._getDrawingArray = function(ref) {
 	scalelevels *= 2;
 
 
-
 	var a = [];
 
 	for(var i = 0; i < scalelevels; i++) {
 
 		var scale = Math.floor(scalefactor) - i;
-		var shade = ref.getShade(scale, scalefactor, scalelevels);
+		var shade = ref.getShade(scale);
 
 
 		// Revise this
-		a.push([shade, scale, scalefactor, scalelevels, function(context, toX, toY, scale, scalefactor, scalelevels) {
-			ref.drawLines(context, toX, toY, scale, scalefactor, scalelevels);
+		a.push([shade, scale, function(context, toX, toY, scale) {
+			ref.drawLines(context, toX, toY, scale);
 		}]);
 
 	}
@@ -80,7 +79,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 	for(var i = 0; i < a.length; i++) {
 
 		// Draw
-		a[i][4](context, toX, toY, a[i][1], a[i][2], a[i][3]);
+		a[i][2](context, toX, toY, a[i][1]);
 	}
 
 

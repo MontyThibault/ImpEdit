@@ -5,8 +5,10 @@ Set up a window resize observer system instead of querying every frame.
 Set up an update hierarchy instead of drawing every frame.
 
 
-Fix referencelines bug: lower scales always drawn before higher scales (even if different objects)
-Make referencelines color in proportion to canvas distance, not log distance.
+Create limits for editor elements, distinct from the window limits.
+
+Implement toBuffer in lineeditor.js
+Begin on Laplace editor.
 
 
 Hook up convolver with graph editor
