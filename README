@@ -1,10 +1,10 @@
 To do:
 
-Set up a window resize observer system instead of querying every frame.
-
+-> Change label spacing to be in refernce to canvas distance.
+-> Implement viewport scaling from handle corners.
 
 Create limits for editor elements, distinct from the window limits.
-Implement viewport scaling from handle corners.
+
 
 
 Implement toBuffer in lineeditor.js

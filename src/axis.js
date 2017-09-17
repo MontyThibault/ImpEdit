@@ -22,7 +22,7 @@ function Axis(orientation, min, max, get_full_extent) {
 Axis.prototype._limits = function() {
 	this.min = (this.min > this.minLimit) ? this.min : this.minLimit;
 	this.max = (this.max < this.maxLimit) ? this.max : this.maxLimit;
-}
+};
 
 
 Axis.prototype.graphToCanvas = function(x) {

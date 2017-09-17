@@ -544,7 +544,7 @@ function Axis(orientation, min, max, get_full_extent) {
 Axis.prototype._limits = function() {
 	this.min = (this.min > this.minLimit) ? this.min : this.minLimit;
 	this.max = (this.max < this.maxLimit) ? this.max : this.maxLimit;
-}
+};
 
 
 Axis.prototype.graphToCanvas = function(x) {
@@ -755,7 +755,6 @@ Graph.prototype.draw = function(context) {
 	var yAxis = this.yAxis;
 
 
-	// This is inefficient
 	var toX = function(x) { return xAxis.graphToCanvas.call(xAxis, x); },
 		toY = function(x) { return yAxis.graphToCanvas.call(yAxis, x); };
 
@@ -905,6 +904,8 @@ window.onresize = function() {
 
 	graph_canvas.width = window.innerWidth;
 	graph_canvas.height = 500;
+
+	graph.needsUpdate = true;
 
 	draw();
 };
@@ -1284,6 +1285,9 @@ function ReferenceLines(principal_axis, secondary_axis) {
 	this.xRef = new ReferenceLinesAxis(principal_axis, secondary_axis);
 	this.yRef = new ReferenceLinesAxis(secondary_axis, principal_axis);
 
+	this.xRef.minimum_label_distance = 60;
+	this.yRef.minimum_label_distance = 25;
+
 }
 
 
@@ -1525,24 +1529,20 @@ ReferenceLinesAxis.prototype._drawLabel = function(context, toX, toY, offset, te
 
 ReferenceLinesAxis.prototype.drawLabels = function(context, toX, toY) {
 
+	var min_graph_distance = this.axis.canvasToGraph(this.minimum_label_distance) 
+			- this.axis.canvasToGraph(0);
 
-	var scalefactor = Math.log(Math.abs(this.axis.max - this.axis.min)) / 
-		Math.log(this.line_multiples);
+	var scalefactor = Math.log(min_graph_distance) / Math.log(this.line_multiples);
+
+	var interval = Math.pow(this.line_multiples, Math.ceil(scalefactor));
 
 
-	var labels = [];
-	var interval = Math.pow(this.line_multiples, Math.floor(scalefactor));
-
-
+	var that = this;
 	this._iterateIntervalOverAxis(interval, function(j) {
-		labels.push([j, (Math.round(j * 1e10) / 1e10).toExponential()]);
+	
+		that._drawLabel(context, toX, toY, j, (Math.round(j * 1e10) / 1e10).toExponential());
+
 	});
-
-	for(var i = 0; i < labels.length; i++) {
-		var label = labels[i];
-
-		this._drawLabel(context, toX, toY, label[0], label[1]);
-	}
 
 };
 
