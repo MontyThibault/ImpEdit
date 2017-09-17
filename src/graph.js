@@ -82,6 +82,8 @@ Graph.prototype.draw = function(context) {
 	var xAxis = this.xAxis;
 	var yAxis = this.yAxis;
 
+
+	// This is inefficient
 	var toX = function(x) { return xAxis.graphToCanvas.call(xAxis, x); },
 		toY = function(x) { return yAxis.graphToCanvas.call(yAxis, x); };
 

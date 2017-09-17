@@ -467,6 +467,59 @@ Audio.prototype.reconnect = function() {
 
 module.exports = Audio;
 },{"jsfft":2}],4:[function(require,module,exports){
+module.exports = function(audio) {
+
+	var convolution_enabled = document.getElementById('convolution_enabled');
+	var fft_enabled = document.getElementById('fft_enabled');
+	var range_label = document.getElementById('range_label');
+	var range_slider = document.getElementById('range_slider');
+
+
+	convolution_enabled.onclick = function(e) {
+
+		if(convolution_enabled.checked) {
+			audio.convolve_enable();
+		} else {
+			audio.convolve_disable();
+		}
+
+	};
+
+
+	fft_enabled.onclick = function(e) {
+
+		if(fft_enabled.checked) {
+			audio.fft_enable();
+		} else {
+			audio.fft_disable();
+		}
+
+	};
+
+
+	var range_min = 20;
+	var range_max = 20000;
+
+	var range_log_base = 10;
+
+	range_slider.min = Math.log(range_min) / Math.log(range_log_base);
+	range_slider.max = Math.log(range_max) / Math.log(range_log_base);
+
+	range_slider.oninput = function() {
+
+		var n = Math.floor(Math.pow(range_log_base, this.value));
+
+		range_label.innerHTML = n + ' Hz';
+		audio.lowpass_cutoff = n;
+
+	};
+
+	range_slider.value = (Math.log(range_min) + Math.log(range_max)) 
+			/ (2 * Math.log(range_log_base));
+	range_slider.oninput();
+
+};
+},{}],5:[function(require,module,exports){
 var RangeSlider = require('./rangeslider.js');
 
 
@@ -562,7 +615,7 @@ Axis.prototype.panGraph = function(diff) {
 
 
 module.exports = Axis;
-},{"./rangeslider.js":11}],5:[function(require,module,exports){
+},{"./rangeslider.js":12}],6:[function(require,module,exports){
 function ControlPoint(x, y, editor, graph) {
 	this.x = x;
 	this.y = y;
@@ -616,7 +669,7 @@ ControlPoint.prototype.ondblclick = function() {
 };
 
 module.exports = ControlPoint;
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
 var MouseControl = require('./mousecontrol.js');
@@ -701,6 +754,8 @@ Graph.prototype.draw = function(context) {
 	var xAxis = this.xAxis;
 	var yAxis = this.yAxis;
 
+
+	// This is inefficient
 	var toX = function(x) { return xAxis.graphToCanvas.call(xAxis, x); },
 		toY = function(x) { return yAxis.graphToCanvas.call(yAxis, x); };
 
@@ -751,7 +806,7 @@ Graph.prototype.addControlPoint = function(x, y) {
 
 
 module.exports = Graph;
-},{"./axis.js":4,"./lineeditor.js":8,"./mousecontrol.js":10,"./rangeslider.js":11,"./referencelines.js":12}],7:[function(require,module,exports){
+},{"./axis.js":5,"./lineeditor.js":9,"./mousecontrol.js":11,"./rangeslider.js":12,"./referencelines.js":13}],8:[function(require,module,exports){
 function Line() {
 	this.points = [];
 	this.color = '#FF0000';
@@ -774,7 +829,7 @@ Line.prototype.draw = function(context, toX, toY) {
 };
 
 module.exports = Line;
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 var Line = require('./line.js');
 
@@ -831,11 +886,12 @@ LineEditor.prototype.toBuffer = function() {
 
 
 module.exports = LineEditor;
-},{"./controlpoint.js":5,"./line.js":7}],9:[function(require,module,exports){
+},{"./controlpoint.js":6,"./line.js":8}],10:[function(require,module,exports){
 
 
 var Graph = require("./graph.js");
 var Audio = require("./audio.js");
+var attachAudioDOM = require("./audioDOM.js");
 
 
 var graph_canvas = document.getElementById('screen');
@@ -869,58 +925,8 @@ window.onresize();
 
 
 var audio = new Audio();
-
-
-
-var convolution_enabled = document.getElementById('convolution_enabled');
-var fft_enabled = document.getElementById('fft_enabled');
-var range_label = document.getElementById('range_label');
-var range_slider = document.getElementById('range_slider');
-
-
-convolution_enabled.onclick = function(e) {
-
-	if(convolution_enabled.checked === true) {
-		audio.convolve_enable();
-	} else {
-		audio.convolve_disable();
-	}
-
-};
-
-
-fft_enabled.onclick = function(e) {
-
-	if(fft_enabled.checked === true) {
-		audio.fft_enable();
-	} else {
-		audio.fft_disable();
-	}
-
-};
-
-
-var range_min = 20;
-var range_max = 20000;
-
-var range_log_base = 10;
-
-range_slider.min = Math.log(range_min) / Math.log(range_log_base);
-range_slider.max = Math.log(range_max) / Math.log(range_log_base);
-
-range_slider.oninput = function() {
-
-	var n = Math.floor(Math.pow(range_log_base, this.value));
-
-	range_label.innerHTML = n + ' Hz';
-	audio.lowpass_cutoff = n;
-
-};
-
-range_slider.value = (Math.log(range_min) + Math.log(range_max)) 
-		/ (2 * Math.log(range_log_base));
-range_slider.oninput();
-},{"./audio.js":3,"./graph.js":6}],10:[function(require,module,exports){
+attachAudioDOM(audio);
+},{"./audio.js":3,"./audioDOM.js":4,"./graph.js":7}],11:[function(require,module,exports){
 
 function debounce(f, delay) {
   var timer = null;
@@ -1085,7 +1091,7 @@ MouseControl.prototype.onscroll = function(e) {
 
 
 module.exports = MouseControl; // Singleton
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 
 // Throughout this class, p refers to "principal" and s refers to
 // "secondary", as a generic version of x/y or y/x, depending on the orientation.
@@ -1269,7 +1275,7 @@ RangeSlider.prototype.ondblclick = function() {
 
 module.exports = RangeSlider;
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 var ReferenceLinesAxis = require('./referencelinesaxis.js');
 
 
@@ -1366,7 +1372,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
 module.exports = ReferenceLines;
-},{"./referencelinesaxis.js":13}],13:[function(require,module,exports){
+},{"./referencelinesaxis.js":14}],14:[function(require,module,exports){
 
 
 function ReferenceLinesAxis(principal_axis, secondary_axis) {
@@ -1542,4 +1548,4 @@ ReferenceLinesAxis.prototype.drawLabels = function(context, toX, toY) {
 
 
 module.exports = ReferenceLinesAxis;
-},{}]},{},[9]);
+},{}]},{},[10]);
