@@ -332,31 +332,43 @@ function LowestOddFactor(n) {
 var jsfft = require('jsfft');
 
 
+function set_context(that, f) {
+	return function() {
+		f.apply(that, arguments);
+	}
+}
 
-function Audio(canvas, context) {
 
-	var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+function Audio() {
 
+	this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
 	var myAudio = document.querySelector('audio');
+	this.source = this.audioContext.createMediaElementSource(myAudio);	
+
+	this.block_size = 16384;
+	this.lowpass_cutoff = 500; // Hz
 
 
-	var source = audioContext.createMediaElementSource(myAudio);	
-
-	var block_size = 16384;
-
-	var sample_blend = 30;
-
-	var z_array = new jsfft.ComplexArray(block_size, Float32Array);
+	var z_array = new jsfft.ComplexArray(this.block_size, Float32Array);
 
 
-	window.cutoff = 500;
 
+	var lowpass_map = set_context(this, function(freq, i, n) {
 
-	var lastSamples = new Float32Array(2);
+		var hz = (this.audioContext.sampleRate / this.block_size)  * (i + 1); 
 
-	var processor = audioContext.createScriptProcessor(block_size, 2, 2);
-	processor.onaudioprocess = function(audioProcessingEvent) {
+		if(hz > this.lowpass_cutoff) {
+			freq.real = 0;
+			freq.imag = 0;
+		}
+
+	});
+
+	this.fft_processor = this.audioContext.createScriptProcessor(this.block_size, 2, 2);
+	this.fft_processor.onaudioprocess = 
+			set_context(this, function(audioProcessingEvent) {
+
 
 		var inputBuffer = audioProcessingEvent.inputBuffer;
 		var outputBuffer = audioProcessingEvent.outputBuffer;
@@ -366,95 +378,76 @@ function Audio(canvas, context) {
 			z_array.real = inputBuffer.getChannelData(channel);
 			z_array.imag.fill(0);
 
-			z_array.frequencyMap((freq, i, n) => {
 
-				if(i > window.cutoff) {
-					freq.real = 0;
-					freq.imag = 0;
-				}
+			z_array.frequencyMap(lowpass_map);
 
-			});
-
-			console.log(z_array.real[0]);
-			console.log(lastSamples[channel]);
-			console.log("--");
-
-
-			for(var i = 1; i < sample_blend; i++) {
-
-				var f = i / sample_blend;
-
-				z_array.real[i - 1] *= f;
-				z_array.real[i - 1] += lastSamples[channel] * (1 - f)
-
-			}
-
-
-			
 
 		    outputBuffer.copyToChannel(z_array.real, channel, 0);
-		    lastSamples[channel] = z_array.real[block_size - 2];
-
 	    }
 
-	};
+	});
 
 
-	source.connect(processor);
-	processor.connect(audioContext.destination);
+	this.convolver = this.audioContext.createConvolver();
 
-
-
+	// Dirac-Delta 
+	this.convolver.buffer = this.audioContext.createBuffer(2, 100, this.audioContext.sampleRate);
 	
-	
+	this.convolver.buffer.getChannelData(0)[0] = 1;
+	this.convolver.buffer.getChannelData(1)[0] = 1;
 
-	// var dataArray = new Float32Array(block_size);
 
-	// // draw an oscilloscope of the current audio source
+	this.convolve = false;
+	this.fft = false;
 
-	// function draw() {
-
-	// drawVisual = requestAnimationFrame(draw);
-
-	// 	analyser.getByteTimeDomainData(dataArray);
-
-	// 	context.fillStyle = 'rgb(200, 200, 200)';
-	// 	context.fillRect(0, 0, canvas.width, canvas.height);
-
-	// 	context.lineWidth = 2;
-	// 	context.strokeStyle = 'rgb(0, 0, 0)';
-
-	// 	context.beginPath();
-
-	// 	var sliceWidth = canvas.width * 1.0 / bufferLength;
-	// 	var x = 0;
-
-	// 	for (var i = 0; i < bufferLength; i++) {
-
-	// 			var v = dataArray[i] / 128.0;
-	// 		var y = v * canvas.height / 2;
-
-	// 		if (i === 0) {
-	// 		  context.moveTo(x, y);
-	// 		} else {
-	// 		  context.lineTo(x, y);
-	// 		}
-
-	// 		x += sliceWidth;
-	// 	}
-
-	// 	// context.lineTo(canvas.width, canvas.height / 2);
-	// 	context.lineTo(canvas.width, y);
-
-	// 	context.stroke();
-	// };
-
-	// draw();
-	
+	this.reconnect();
 
 }
 
 
+
+Audio.prototype.convolve_enable = function() {
+	this.convolve = true;
+	this.reconnect();
+};
+
+Audio.prototype.convolve_disable = function() {
+	this.convolve = false;
+	this.reconnect();
+};
+
+Audio.prototype.fft_enable = function() {
+	this.fft = true;
+	this.reconnect();
+};
+
+Audio.prototype.fft_disable = function() {
+	this.fft = false;
+	this.reconnect();
+};
+
+Audio.prototype.reconnect = function() {
+
+	this.source.disconnect();
+	this.fft_processor.disconnect();
+	this.convolver.disconnect();
+
+
+	var last = this.source;
+
+	if(this.fft) {
+		last.connect(this.fft_processor);
+		last = this.fft_processor;
+	}
+
+	if(this.convolve) {
+		last.connect(this.convolver);
+		last = this.convolver;
+	}
+
+	last.connect(this.audioContext.destination);
+
+};
 
 
 module.exports = Audio;
@@ -844,13 +837,62 @@ window.onresize();
 
 
 
-
 ///////////////////////
 
-var eq_canvas = document.getElementById('eq');
-var eq_context = eq_canvas.getContext('2d');
 
-Audio(eq_canvas, eq_context);
+
+var audio = new Audio();
+
+
+
+var convolution_enabled = document.getElementById('convolution_enabled');
+var fft_enabled = document.getElementById('fft_enabled');
+var range_label = document.getElementById('range_label');
+var range_slider = document.getElementById('range_slider');
+
+
+convolution_enabled.onclick = function(e) {
+
+	if(convolution_enabled.checked === true) {
+		audio.convolve_enable();
+	} else {
+		audio.convolve_disable();
+	}
+
+};
+
+
+fft_enabled.onclick = function(e) {
+
+	if(fft_enabled.checked === true) {
+		audio.fft_enable();
+	} else {
+		audio.fft_disable();
+	}
+
+};
+
+
+var range_min = 20;
+var range_max = 20000;
+
+var range_log_base = 10;
+
+range_slider.min = Math.log(range_min) / Math.log(range_log_base);
+range_slider.max = Math.log(range_max) / Math.log(range_log_base);
+
+range_slider.oninput = function() {
+
+	var n = Math.floor(Math.pow(range_log_base, this.value));
+
+	range_label.innerHTML = n + ' Hz';
+	audio.lowpass_cutoff = n;
+
+};
+
+range_slider.value = (Math.log(range_min) + Math.log(range_max)) 
+		/ (2 * Math.log(range_log_base));
+range_slider.oninput();
 },{"./audio.js":3,"./graph.js":6}],10:[function(require,module,exports){
 
 function debounce(f, delay) {
