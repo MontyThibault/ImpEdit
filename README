@@ -1,14 +1,22 @@
 To do:
 
--> Change label spacing to be in refernce to canvas distance.
+
 -> Implement viewport scaling from handle corners.
+-> Waveform scrubber
+-> Music file selection dialogue
+
+-> Units on graph labels
+
 
 Create limits for editor elements, distinct from the window limits.
 
 
 
 Implement toBuffer in lineeditor.js
-Begin on Laplace editor.
+
+
+Begin on Laplace editor. (WebGL implementation)
+FFT EQ (this should be very easy)
 
 
 Hook up convolver with graph editor (convolver currently doesn't work for an unknown reason)
