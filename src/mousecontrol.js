@@ -148,6 +148,8 @@ MouseControl.prototype.ondblclick = function(e) {
 		this.graph.addControlPoint(this._getX(e), this._getY(e));
 	}
 
+	this.graph.needsUpdate = true;
+
 };
 
 MouseControl.prototype.onscroll = function(e) {
