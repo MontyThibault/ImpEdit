@@ -32,7 +32,7 @@ function debounce(f, delay) {
 
 
 
-function Graph(canvas) {
+class Graph(canvas) {
 	
 	this.canvas = canvas;
 	
@@ -42,9 +42,9 @@ function Graph(canvas) {
 
 	this.reference = new ReferenceLines(this.xAxis, this.yAxis);
 
-	this.reference.xRef.specialLabels.push([0, 'Y', '#0000FF']);
+	this.reference.xRef.specialLabels.push([0, 'Y (Waveform)', '#0000FF']);
 	this.reference.xRef.specialLabels.push([5, 'END', '#00CC00', [10, 3, 2, 3]]);
-	this.reference.yRef.specialLabels.push([0, 'X', '#0000FF']);
+	this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
 
 
 	this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis, this.reference.xRef.specialLabels);
@@ -68,6 +68,18 @@ function Graph(canvas) {
 }
 
 
+Graph.prototype._drawElements = function(context, toX, toY) {
+
+	this.reference.draw(context, toX, toY);
+
+	this.xAxisRange.draw(context, toX, toY);
+	this.yAxisRange.draw(context, toX, toY);
+
+	this.lineeditor.draw(context, toX, toY);
+
+};
+
+
 Graph.prototype.draw = function(context) {
 
 	if(!this.needsUpdate) {
@@ -75,9 +87,7 @@ Graph.prototype.draw = function(context) {
 	}
 
 
-	context.fillStyle = '#F5F5F5';
-	context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
+	context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
 	var xAxis = this.xAxis;
 	var yAxis = this.yAxis;
@@ -87,12 +97,7 @@ Graph.prototype.draw = function(context) {
 		toY = function(x) { return yAxis.graphToCanvas.call(yAxis, x); };
 
 
-	this.reference.draw(context, toX, toY);
-
-	this.xAxisRange.draw(context, toX, toY);
-	this.yAxisRange.draw(context, toX, toY);
-
-	this.lineeditor.draw(context, toX, toY);
+	this._drawElements(context, toX, toY);
 
 
 	this.needsUpdate = false;
