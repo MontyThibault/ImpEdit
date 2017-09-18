@@ -666,7 +666,7 @@ Axis.prototype.panGraphMinMax = function(diff, bound_type) {
 
 
 module.exports = Axis;
-},{"./rangeslider.js":12}],6:[function(require,module,exports){
+},{"./rangeslider.js":13}],6:[function(require,module,exports){
 function ControlPoint(x, y, editor, graph) {
 	this.x = x;
 	this.y = y;
@@ -723,6 +723,61 @@ ControlPoint.prototype.ondblclick = function() {
 
 module.exports = ControlPoint;
 },{}],7:[function(require,module,exports){
+var Graph = require('./graph.js');
+
+
+class FrequencyGraph extends Graph {
+
+
+	constructor(canvas2d, canvas3d) {
+
+		super(canvas2d);
+
+		this.canvas3d = canvas3d;
+		this.laplaceNeedsUpdate = true;
+
+		this._initiateWebGL();
+
+	}
+
+
+	_drawElements(context, toX, toY) {
+
+		this.laplaceNeedsUpdate = this.needsUpdate;
+
+
+		if(this.laplaceNeedsUpdate) {
+
+			this._drawLaplace(context.context3d, toX, toY);
+			this.laplaceNeedsUpdate = false;
+
+		}
+
+		super._drawElements(context.context2d, toX, toY);
+
+	}
+
+
+	_drawLaplace(context, toX, toY) {
+
+		// We need impulse response function eventually
+
+		console.log('drawin!');
+
+	}
+
+
+	_initiateWebGL() {
+
+		
+
+	}
+
+}
+
+
+module.exports = FrequencyGraph;
+},{"./graph.js":8}],8:[function(require,module,exports){
 var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
 var MouseControl = require('./mousecontrol.js');
@@ -776,8 +831,7 @@ class Graph {
 
 		this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis, this.reference.xRef.specialLabels);
 		this.yAxisRange = new RangeSlider(this.yAxis, this.xAxis, this.reference.yRef.specialLabels);
-
-
+		
 
 		this.mousecontrol = new MouseControl(this);
 		this.lineeditor = new LineEditor(this);
@@ -797,6 +851,9 @@ class Graph {
 
 	_drawElements(context, toX, toY) {
 
+		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+
 		this.reference.draw(context, toX, toY);
 
 		this.xAxisRange.draw(context, toX, toY);
@@ -812,9 +869,6 @@ class Graph {
 		if(!this.needsUpdate) {
 			return;
 		}
-
-
-		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
 		var xAxis = this.xAxis;
 		var yAxis = this.yAxis;
@@ -882,7 +936,7 @@ class Graph {
 }
 
 module.exports = Graph;
-},{"./axis.js":5,"./lineeditor.js":9,"./mousecontrol.js":11,"./rangeslider.js":12,"./referencelines.js":13}],8:[function(require,module,exports){
+},{"./axis.js":5,"./lineeditor.js":10,"./mousecontrol.js":12,"./rangeslider.js":13,"./referencelines.js":14}],9:[function(require,module,exports){
 function Line() {
 	this.points = [];
 	this.color = '#FF0000';
@@ -905,7 +959,7 @@ Line.prototype.draw = function(context, toX, toY) {
 };
 
 module.exports = Line;
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 var Line = require('./line.js');
 
@@ -1028,10 +1082,11 @@ LineEditor.prototype.toBuffer = function(buffer, samplerate) {
 
 
 module.exports = LineEditor;
-},{"./controlpoint.js":6,"./line.js":8}],10:[function(require,module,exports){
+},{"./controlpoint.js":6,"./line.js":9}],11:[function(require,module,exports){
 
 
 var Graph = require("./graph.js");
+var FrequencyGraph = require("./frequencygraph.js");
 var Audio = require("./audio.js");
 var attachAudioDOM = require("./audioDOM.js");
 
@@ -1040,13 +1095,16 @@ var ir_canvas = document.getElementById('ir_graph');
 var ir_context = ir_canvas.getContext('2d');
 
 
-var hz_canvas = document.getElementById('hz_graph');
-var hz_context = hz_canvas.getContext('2d');
+var hz_canvas2d = document.getElementById('hz_graph2d');
+var hz_canvas3d = document.getElementById('hz_graph3d');
+var hz_div = document.getElementById('hz_div');
 
+var hz_context2d = hz_canvas2d.getContext('2d');
+var hz_context3d = hz_canvas3d.getContext('3d');
 
 
 var ir = new Graph(ir_canvas);
-var hz = new Graph(hz_canvas);
+var hz = new FrequencyGraph(hz_canvas2d, hz_canvas3d);
 
 
 window.onresize = function() {
@@ -1057,8 +1115,13 @@ window.onresize = function() {
 	ir.needsUpdate = true;
 
 
-	hz_canvas.width = window.innerWidth;
-	hz_canvas.height = 500;
+	hz_canvas2d.width = window.innerWidth;
+	hz_canvas2d.height = 500;
+
+	hz_canvas3d.width = window.innerWidth;
+	hz_canvas3d.height = 500;
+
+	hz_div.style = 'height: 500px';
 
 	hz.needsUpdate = true;
 
@@ -1071,7 +1134,10 @@ function draw() {
 	requestAnimationFrame(draw);
 
 	ir.draw(ir_context);
-	hz.draw(hz_context);
+	hz.draw({
+		context2d: hz_context2d,
+		context3d: hz_context3d
+	});
 
 }
 
@@ -1085,7 +1151,7 @@ window.onresize();
 
 var audio = new Audio();
 attachAudioDOM(audio);
-},{"./audio.js":3,"./audioDOM.js":4,"./graph.js":7}],11:[function(require,module,exports){
+},{"./audio.js":3,"./audioDOM.js":4,"./frequencygraph.js":7,"./graph.js":8}],12:[function(require,module,exports){
 
 function debounce(f, delay) {
   var timer = null;
@@ -1194,6 +1260,7 @@ MouseControl.prototype.onmousemove = function(e) {
 		var y = this._getY(e);
 
 		this.active.ondrag(x, y);
+
 		this.graph.needsUpdate = true;
 
 	
@@ -1252,7 +1319,7 @@ MouseControl.prototype.onscroll = function(e) {
 
 
 module.exports = MouseControl; // Singleton
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 // Throughout this class, p refers to "principal" and s refers to
 // "secondary", as a generic version of x/y or y/x, depending on the orientation.
 
@@ -1752,7 +1819,7 @@ RangeSlider.prototype._updateCornerColors = function() {
 
 module.exports = RangeSlider;
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 var ReferenceLinesAxis = require('./referencelinesaxis.js');
 
 
@@ -1853,7 +1920,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
 module.exports = ReferenceLines;
-},{"./referencelinesaxis.js":14}],14:[function(require,module,exports){
+},{"./referencelinesaxis.js":15}],15:[function(require,module,exports){
 
 
 function ReferenceLinesAxis(principal_axis, secondary_axis) {
@@ -2065,4 +2132,4 @@ ReferenceLinesAxis.prototype.drawLabels = function(context, toX, toY) {
 
 
 module.exports = ReferenceLinesAxis;
-},{}]},{},[10]);
+},{}]},{},[11]);

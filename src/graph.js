@@ -51,8 +51,7 @@ class Graph {
 
 		this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis, this.reference.xRef.specialLabels);
 		this.yAxisRange = new RangeSlider(this.yAxis, this.xAxis, this.reference.yRef.specialLabels);
-
-
+		
 
 		this.mousecontrol = new MouseControl(this);
 		this.lineeditor = new LineEditor(this);
@@ -72,6 +71,9 @@ class Graph {
 
 	_drawElements(context, toX, toY) {
 
+		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+
 		this.reference.draw(context, toX, toY);
 
 		this.xAxisRange.draw(context, toX, toY);
@@ -87,9 +89,6 @@ class Graph {
 		if(!this.needsUpdate) {
 			return;
 		}
-
-
-		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
 		var xAxis = this.xAxis;
 		var yAxis = this.yAxis;

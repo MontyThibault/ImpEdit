@@ -106,6 +106,7 @@ MouseControl.prototype.onmousemove = function(e) {
 		var y = this._getY(e);
 
 		this.active.ondrag(x, y);
+
 		this.graph.needsUpdate = true;
 
 	
