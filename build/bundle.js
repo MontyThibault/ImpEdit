@@ -757,144 +757,129 @@ function debounce(f, delay) {
 
 
 
-function Graph(canvas) {
+class Graph {
 	
-	this.canvas = canvas;
-	
+	constructor(canvas) {
 
-	this.xAxis = new Axis(true, -5, 5, function() { return canvas.width; });
-	this.yAxis = new Axis(false, -5, 5, function() { return canvas.height; });
+		this.canvas = canvas;
+		
 
-	this.reference = new ReferenceLines(this.xAxis, this.yAxis);
+		this.xAxis = new Axis(true, -5, 5, function() { return canvas.width; });
+		this.yAxis = new Axis(false, -5, 5, function() { return canvas.height; });
 
-	this.reference.xRef.specialLabels.push([0, 'Y (Waveform)', '#0000FF']);
-	this.reference.xRef.specialLabels.push([5, 'END', '#00CC00', [10, 3, 2, 3]]);
-	this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
+		this.reference = new ReferenceLines(this.xAxis, this.yAxis);
 
-
-	this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis, this.reference.xRef.specialLabels);
-	this.yAxisRange = new RangeSlider(this.yAxis, this.xAxis, this.reference.yRef.specialLabels);
+		this.reference.xRef.specialLabels.push([0, 'Y (Waveform)', '#0000FF']);
+		this.reference.xRef.specialLabels.push([5, 'END', '#00CC00', [10, 3, 2, 3]]);
+		this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
 
 
-
-	this.mousecontrol = new MouseControl(this);
-	this.lineeditor = new LineEditor(this);
-
-	this.lineeditor.addControlPoint(0, 0);
-
-	this.xAxisRange.addMouseControl(this.mousecontrol);
-	this.yAxisRange.addMouseControl(this.mousecontrol);
+		this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis, this.reference.xRef.specialLabels);
+		this.yAxisRange = new RangeSlider(this.yAxis, this.xAxis, this.reference.yRef.specialLabels);
 
 
-	this.mouseBindings();
+
+		this.mousecontrol = new MouseControl(this);
+		this.lineeditor = new LineEditor(this);
+
+		this.lineeditor.addControlPoint(0, 0);
+
+		this.xAxisRange.addMouseControl(this.mousecontrol);
+		this.yAxisRange.addMouseControl(this.mousecontrol);
 
 
-	this.needsUpdate = true;
-}
+		this.mouseBindings();
 
 
-Graph.prototype._drawElements = function(context, toX, toY) {
-
-	this.reference.draw(context, toX, toY);
-
-	this.xAxisRange.draw(context, toX, toY);
-	this.yAxisRange.draw(context, toX, toY);
-
-	this.lineeditor.draw(context, toX, toY);
-
-};
-
-
-Graph.prototype.draw = function(context) {
-
-	if(!this.needsUpdate) {
-		return;
+		this.needsUpdate = true;
 	}
 
 
-	context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+	_drawElements(context, toX, toY) {
 
-	var xAxis = this.xAxis;
-	var yAxis = this.yAxis;
+		this.reference.draw(context, toX, toY);
 
+		this.xAxisRange.draw(context, toX, toY);
+		this.yAxisRange.draw(context, toX, toY);
 
-	var toX = function(x) { return xAxis.graphToCanvas.call(xAxis, x); },
-		toY = function(x) { return yAxis.graphToCanvas.call(yAxis, x); };
+		this.lineeditor.draw(context, toX, toY);
 
-
-	this._drawElements(context, toX, toY);
-
-
-	this.needsUpdate = false;
-};
+	}
 
 
-Graph.prototype.zoomIn = function() {
-	this.xAxis.zoomIn();
-	this.yAxis.zoomIn();
+	draw(context) {
 
-	this.needsUpdate = true;
-};
-
-Graph.prototype.zoomOut = function() {
-	this.xAxis.zoomOut();
-	this.yAxis.zoomOut();
-
-	this.needsUpdate = true;
-};
-
-Graph.prototype.pan = function(diffX, diffY) {
-
-	this.xAxis.panCanvas(diffX);
-	this.yAxis.panCanvas(diffY);
-
-	this.needsUpdate = true;
-};
+		if(!this.needsUpdate) {
+			return;
+		}
 
 
-Graph.prototype.addControlPoint = function(x, y) {
+		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-	var fromX = this.xAxis.canvasToGraph(x),
-		fromY = this.yAxis.canvasToGraph(y);
-
-	this.lineeditor.addControlPoint(fromX, fromY);
-};
+		var xAxis = this.xAxis;
+		var yAxis = this.yAxis;
 
 
-Graph.prototype.mouseBindings = function() {
-
-	this.canvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
-	this.canvas.ondblclick = pdsc(this.mousecontrol, this.mousecontrol.ondblclick);
-	this.canvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
+		var toX = function(x) { return xAxis.graphToCanvas.call(xAxis, x); },
+			toY = function(x) { return yAxis.graphToCanvas.call(yAxis, x); };
 
 
-	var that = this;
-	document.addEventListener('mousemove', debounce(function(e) {
-
-		var bb = that.canvas.getBoundingClientRect();
-
-		e.clientX -= that.canvas.left;
-		e.clientY -= that.canvas.top;
-
-		that.mousecontrol.onmousemove(e);
-
-	}, 1000 / 60));
+		this._drawElements(context, toX, toY);
 
 
-	document.addEventListener('mouseup', function(e) {
-
-		var bb = that.canvas.getBoundingClientRect();
-
-		e.clientX -= that.canvas.left;
-		e.clientY -= that.canvas.top;
-
-		that.mousecontrol.onmouseup(e);
-
-	});
+		this.needsUpdate = false;
+	}
 
 
-};
+	zoomIn() {
+		this.xAxis.zoomIn();
+		this.yAxis.zoomIn();
 
+		this.needsUpdate = true;
+	}
+
+	zoomOut() {
+		this.xAxis.zoomOut();
+		this.yAxis.zoomOut();
+
+		this.needsUpdate = true;
+	}
+
+	pan(diffX, diffY) {
+
+		this.xAxis.panCanvas(diffX);
+		this.yAxis.panCanvas(diffY);
+
+		this.needsUpdate = true;
+	}
+
+
+	addControlPoint(x, y) {
+
+		var fromX = this.xAxis.canvasToGraph(x),
+			fromY = this.yAxis.canvasToGraph(y);
+
+		this.lineeditor.addControlPoint(fromX, fromY);
+	}
+
+
+	mouseBindings() {
+
+		this.canvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
+		this.canvas.ondblclick = pdsc(this.mousecontrol, this.mousecontrol.ondblclick);
+		this.canvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
+
+
+		var that = this;
+		document.addEventListener('mousemove', 
+			debounce(pdsc(that.mousecontrol, that.mousecontrol.onmousemove), 1000 / 60));
+
+
+		document.addEventListener('mouseup', that.mousecontrol.onmouseup.bind(that.mousecontrol));
+
+	}
+
+}
 
 module.exports = Graph;
 },{"./axis.js":5,"./lineeditor.js":9,"./mousecontrol.js":11,"./rangeslider.js":12,"./referencelines.js":13}],8:[function(require,module,exports){
