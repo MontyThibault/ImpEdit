@@ -35,6 +35,7 @@ function debounce(f, delay) {
 function Graph(canvas) {
 	
 	this.canvas = canvas;
+	
 
 	this.xAxis = new Axis(true, -5, 5, function() { return canvas.width; });
 	this.yAxis = new Axis(false, -5, 5, function() { return canvas.height; });
@@ -46,8 +47,9 @@ function Graph(canvas) {
 	this.reference.yRef.specialLabels.push([0, 'X', '#0000FF']);
 
 
-	this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis);
-	this.yAxisRange = new RangeSlider(this.yAxis, this.xAxis);
+	this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis, this.reference.xRef.specialLabels);
+	this.yAxisRange = new RangeSlider(this.yAxis, this.xAxis, this.reference.yRef.specialLabels);
+
 
 
 	this.mousecontrol = new MouseControl(this);
