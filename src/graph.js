@@ -49,8 +49,8 @@ function Graph(canvas) {
 
 	this.lineeditor.addControlPoint(0, 0);
 
-	this.mousecontrol.addObject(this.xAxisRange);
-	this.mousecontrol.addObject(this.yAxisRange);
+	this.xAxisRange.mousecontrol(this.mousecontrol);
+	this.yAxisRange.mousecontrol(this.mousecontrol);
 
 
 	canvas.onmousemove = pdsc(this.mousecontrol, 

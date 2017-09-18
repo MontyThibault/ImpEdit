@@ -87,7 +87,34 @@ Axis.prototype.panGraph = function(diff) {
 
 	this._limits();
 
-}
+};
+
+Axis.prototype.panGraphMinMax = function(diff, bound_type) {
+
+	if(bound_type === 'min') {
+
+		if(this.min - diff < this.minLimit) {
+
+			return;
+
+		}
+
+		this.min -= diff;
+
+
+	} else if(bound_type === 'max') {
+
+		if(this.max - diff > this.maxLimit) {
+
+			return;
+
+		}
+
+		this.max -= diff;
+
+	}
+
+};
 
 
 
