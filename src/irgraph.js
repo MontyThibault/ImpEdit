@@ -1,0 +1,49 @@
+var Graph = require('./graph.js');
+var LineEditor = require('./lineeditor.js');
+var Axis = require('./axis.js');
+
+
+class IRGraph extends Graph {
+
+	constructor(canvas) {
+
+		super(canvas);
+
+		this.xAxis = new Axis(true, -5, 5, function() { return canvas.width; });
+		this.yAxis = new Axis(false, -5, 5, function() { return canvas.height; });
+
+		this.initAxes(this.xAxis, this.yAxis);
+
+
+		this.reference.xRef.specialLabels.push([0, 'Y (Waveform)', '#0000FF']);
+		this.reference.xRef.specialLabels.push([5, 'END', '#00CC00', [10, 3, 2, 3]]);
+		this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
+
+		this.lineeditor = new LineEditor(this);
+		this.lineeditor.addControlPoint(0, 0);
+
+	}
+
+
+	_drawElements(context, toX, toY) {
+
+		super._drawElements(context, toX, toY);
+
+		this.lineeditor.draw(context, toX, toY);
+
+	}
+
+
+	addControlPoint(x, y) {
+
+		var fromX = this.xAxis.canvasToGraph(x),
+			fromY = this.yAxis.canvasToGraph(y);
+
+		this.lineeditor.addControlPoint(fromX, fromY);
+	}
+
+
+}
+
+
+module.exports = IRGraph;

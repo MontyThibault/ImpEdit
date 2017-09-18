@@ -1,6 +1,6 @@
 
 
-var Graph = require("./graph.js");
+var IRGraph = require("./irgraph.js");
 var FrequencyGraph = require("./frequencygraph.js");
 var Audio = require("./audio.js");
 var attachAudioDOM = require("./audioDOM.js");
@@ -18,7 +18,7 @@ var hz_context2d = hz_canvas2d.getContext('2d');
 var hz_context3d = hz_canvas3d.getContext('3d');
 
 
-var ir = new Graph(ir_canvas);
+var ir = new IRGraph(ir_canvas);
 var hz = new FrequencyGraph(hz_canvas2d, hz_canvas3d);
 
 

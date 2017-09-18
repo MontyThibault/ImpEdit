@@ -666,7 +666,7 @@ Axis.prototype.panGraphMinMax = function(diff, bound_type) {
 
 
 module.exports = Axis;
-},{"./rangeslider.js":13}],6:[function(require,module,exports){
+},{"./rangeslider.js":14}],6:[function(require,module,exports){
 function ControlPoint(x, y, editor, graph) {
 	this.x = x;
 	this.y = y;
@@ -724,6 +724,7 @@ ControlPoint.prototype.ondblclick = function() {
 module.exports = ControlPoint;
 },{}],7:[function(require,module,exports){
 var Graph = require('./graph.js');
+var Axis = require('./axis.js');
 
 
 class FrequencyGraph extends Graph {
@@ -732,6 +733,13 @@ class FrequencyGraph extends Graph {
 	constructor(canvas2d, canvas3d) {
 
 		super(canvas2d);
+
+		this.xAxis = new Axis(true, -10, 10, function() { return canvas2d.width; });
+		this.yAxis = new Axis(false, -10, 10, function() { return canvas2d.height; });
+
+		this.initAxes(this.xAxis, this.yAxis);
+
+
 
 		this.canvas3d = canvas3d;
 		this.laplaceNeedsUpdate = true;
@@ -769,7 +777,7 @@ class FrequencyGraph extends Graph {
 
 	_initiateWebGL() {
 
-		
+
 
 	}
 
@@ -777,9 +785,7 @@ class FrequencyGraph extends Graph {
 
 
 module.exports = FrequencyGraph;
-},{"./graph.js":8}],8:[function(require,module,exports){
-var LineEditor = require('./lineeditor.js');
-var Axis = require('./axis.js');
+},{"./axis.js":5,"./graph.js":8}],8:[function(require,module,exports){
 var MouseControl = require('./mousecontrol.js');
 var ReferenceLines = require('./referencelines.js');
 var RangeSlider = require('./rangeslider.js');
@@ -814,38 +820,32 @@ function debounce(f, delay) {
 
 class Graph {
 	
-	constructor(canvas) {
+	constructor(canvas, xAxis, yAxis) {
 
 		this.canvas = canvas;
-		
 
-		this.xAxis = new Axis(true, -5, 5, function() { return canvas.width; });
-		this.yAxis = new Axis(false, -5, 5, function() { return canvas.height; });
+		this.mousecontrol = new MouseControl(this);
+		this.mouseBindings();
+
+		this.needsUpdate = true;
+	}
+
+
+	initAxes(xAxis, yAxis) {
+
+		this.xAxis = xAxis;
+		this.yAxis = yAxis;
+
 
 		this.reference = new ReferenceLines(this.xAxis, this.yAxis);
 
-		this.reference.xRef.specialLabels.push([0, 'Y (Waveform)', '#0000FF']);
-		this.reference.xRef.specialLabels.push([5, 'END', '#00CC00', [10, 3, 2, 3]]);
-		this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
-
-
 		this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis, this.reference.xRef.specialLabels);
 		this.yAxisRange = new RangeSlider(this.yAxis, this.xAxis, this.reference.yRef.specialLabels);
-		
 
-		this.mousecontrol = new MouseControl(this);
-		this.lineeditor = new LineEditor(this);
-
-		this.lineeditor.addControlPoint(0, 0);
 
 		this.xAxisRange.addMouseControl(this.mousecontrol);
 		this.yAxisRange.addMouseControl(this.mousecontrol);
 
-
-		this.mouseBindings();
-
-
-		this.needsUpdate = true;
 	}
 
 
@@ -858,8 +858,6 @@ class Graph {
 
 		this.xAxisRange.draw(context, toX, toY);
 		this.yAxisRange.draw(context, toX, toY);
-
-		this.lineeditor.draw(context, toX, toY);
 
 	}
 
@@ -908,15 +906,6 @@ class Graph {
 	}
 
 
-	addControlPoint(x, y) {
-
-		var fromX = this.xAxis.canvasToGraph(x),
-			fromY = this.yAxis.canvasToGraph(y);
-
-		this.lineeditor.addControlPoint(fromX, fromY);
-	}
-
-
 	mouseBindings() {
 
 		this.canvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
@@ -936,7 +925,57 @@ class Graph {
 }
 
 module.exports = Graph;
-},{"./axis.js":5,"./lineeditor.js":10,"./mousecontrol.js":12,"./rangeslider.js":13,"./referencelines.js":14}],9:[function(require,module,exports){
+},{"./mousecontrol.js":13,"./rangeslider.js":14,"./referencelines.js":15}],9:[function(require,module,exports){
+var Graph = require('./graph.js');
+var LineEditor = require('./lineeditor.js');
+var Axis = require('./axis.js');
+
+
+class IRGraph extends Graph {
+
+	constructor(canvas) {
+
+		super(canvas);
+
+		this.xAxis = new Axis(true, -5, 5, function() { return canvas.width; });
+		this.yAxis = new Axis(false, -5, 5, function() { return canvas.height; });
+
+		this.initAxes(this.xAxis, this.yAxis);
+
+
+		this.reference.xRef.specialLabels.push([0, 'Y (Waveform)', '#0000FF']);
+		this.reference.xRef.specialLabels.push([5, 'END', '#00CC00', [10, 3, 2, 3]]);
+		this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
+
+		this.lineeditor = new LineEditor(this);
+		this.lineeditor.addControlPoint(0, 0);
+
+	}
+
+
+	_drawElements(context, toX, toY) {
+
+		super._drawElements(context, toX, toY);
+
+		this.lineeditor.draw(context, toX, toY);
+
+	}
+
+
+	addControlPoint(x, y) {
+
+		var fromX = this.xAxis.canvasToGraph(x),
+			fromY = this.yAxis.canvasToGraph(y);
+
+		this.lineeditor.addControlPoint(fromX, fromY);
+	}
+
+
+}
+
+
+module.exports = IRGraph;
+},{"./axis.js":5,"./graph.js":8,"./lineeditor.js":11}],10:[function(require,module,exports){
 function Line() {
 	this.points = [];
 	this.color = '#FF0000';
@@ -959,7 +998,7 @@ Line.prototype.draw = function(context, toX, toY) {
 };
 
 module.exports = Line;
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 var Line = require('./line.js');
 
@@ -1082,10 +1121,10 @@ LineEditor.prototype.toBuffer = function(buffer, samplerate) {
 
 
 module.exports = LineEditor;
-},{"./controlpoint.js":6,"./line.js":9}],11:[function(require,module,exports){
+},{"./controlpoint.js":6,"./line.js":10}],12:[function(require,module,exports){
 
 
-var Graph = require("./graph.js");
+var IRGraph = require("./irgraph.js");
 var FrequencyGraph = require("./frequencygraph.js");
 var Audio = require("./audio.js");
 var attachAudioDOM = require("./audioDOM.js");
@@ -1103,7 +1142,7 @@ var hz_context2d = hz_canvas2d.getContext('2d');
 var hz_context3d = hz_canvas3d.getContext('3d');
 
 
-var ir = new Graph(ir_canvas);
+var ir = new IRGraph(ir_canvas);
 var hz = new FrequencyGraph(hz_canvas2d, hz_canvas3d);
 
 
@@ -1151,7 +1190,7 @@ window.onresize();
 
 var audio = new Audio();
 attachAudioDOM(audio);
-},{"./audio.js":3,"./audioDOM.js":4,"./frequencygraph.js":7,"./graph.js":8}],12:[function(require,module,exports){
+},{"./audio.js":3,"./audioDOM.js":4,"./frequencygraph.js":7,"./irgraph.js":9}],13:[function(require,module,exports){
 
 function debounce(f, delay) {
   var timer = null;
@@ -1319,7 +1358,7 @@ MouseControl.prototype.onscroll = function(e) {
 
 
 module.exports = MouseControl; // Singleton
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 // Throughout this class, p refers to "principal" and s refers to
 // "secondary", as a generic version of x/y or y/x, depending on the orientation.
 
@@ -1819,7 +1858,7 @@ RangeSlider.prototype._updateCornerColors = function() {
 
 module.exports = RangeSlider;
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 var ReferenceLinesAxis = require('./referencelinesaxis.js');
 
 
@@ -1920,7 +1959,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
 module.exports = ReferenceLines;
-},{"./referencelinesaxis.js":15}],15:[function(require,module,exports){
+},{"./referencelinesaxis.js":16}],16:[function(require,module,exports){
 
 
 function ReferenceLinesAxis(principal_axis, secondary_axis) {
@@ -2132,4 +2171,4 @@ ReferenceLinesAxis.prototype.drawLabels = function(context, toX, toY) {
 
 
 module.exports = ReferenceLinesAxis;
-},{}]},{},[11]);
+},{}]},{},[12]);

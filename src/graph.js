@@ -1,5 +1,3 @@
-var LineEditor = require('./lineeditor.js');
-var Axis = require('./axis.js');
 var MouseControl = require('./mousecontrol.js');
 var ReferenceLines = require('./referencelines.js');
 var RangeSlider = require('./rangeslider.js');
@@ -34,38 +32,32 @@ function debounce(f, delay) {
 
 class Graph {
 	
-	constructor(canvas) {
+	constructor(canvas, xAxis, yAxis) {
 
 		this.canvas = canvas;
-		
 
-		this.xAxis = new Axis(true, -5, 5, function() { return canvas.width; });
-		this.yAxis = new Axis(false, -5, 5, function() { return canvas.height; });
+		this.mousecontrol = new MouseControl(this);
+		this.mouseBindings();
+
+		this.needsUpdate = true;
+	}
+
+
+	initAxes(xAxis, yAxis) {
+
+		this.xAxis = xAxis;
+		this.yAxis = yAxis;
+
 
 		this.reference = new ReferenceLines(this.xAxis, this.yAxis);
 
-		this.reference.xRef.specialLabels.push([0, 'Y (Waveform)', '#0000FF']);
-		this.reference.xRef.specialLabels.push([5, 'END', '#00CC00', [10, 3, 2, 3]]);
-		this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
-
-
 		this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis, this.reference.xRef.specialLabels);
 		this.yAxisRange = new RangeSlider(this.yAxis, this.xAxis, this.reference.yRef.specialLabels);
-		
 
-		this.mousecontrol = new MouseControl(this);
-		this.lineeditor = new LineEditor(this);
-
-		this.lineeditor.addControlPoint(0, 0);
 
 		this.xAxisRange.addMouseControl(this.mousecontrol);
 		this.yAxisRange.addMouseControl(this.mousecontrol);
 
-
-		this.mouseBindings();
-
-
-		this.needsUpdate = true;
 	}
 
 
@@ -78,8 +70,6 @@ class Graph {
 
 		this.xAxisRange.draw(context, toX, toY);
 		this.yAxisRange.draw(context, toX, toY);
-
-		this.lineeditor.draw(context, toX, toY);
 
 	}
 
@@ -125,15 +115,6 @@ class Graph {
 		this.yAxis.panCanvas(diffY);
 
 		this.needsUpdate = true;
-	}
-
-
-	addControlPoint(x, y) {
-
-		var fromX = this.xAxis.canvasToGraph(x),
-			fromY = this.yAxis.canvasToGraph(y);
-
-		this.lineeditor.addControlPoint(fromX, fromY);
 	}
 
 
