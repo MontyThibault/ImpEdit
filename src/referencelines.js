@@ -8,7 +8,6 @@ function ReferenceLines(principal_axis, secondary_axis) {
 
 	this.xRef.minimum_label_distance = 60;
 	this.yRef.minimum_label_distance = 25;
-
 }
 
 
@@ -87,11 +86,13 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
 
-	this.xRef.drawAxes(context, toX, toY);
-	this.yRef.drawAxes(context, toX, toY);
+	this.xRef.drawSpecialLines(context, toX, toY);
+	this.yRef.drawSpecialLines(context, toX, toY);
 
 	this.xRef.drawLabels(context, toX, toY);
 	this.yRef.drawLabels(context, toX, toY);
+
+
 
 };
 

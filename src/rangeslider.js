@@ -350,7 +350,7 @@ RangeSlider.prototype.ondblclick = function() {
 };
 
 
-RangeSlider.prototype.mousecontrol = function(mousecontrol) {
+RangeSlider.prototype.addMouseControl = function(mousecontrol) {
 
 	this._mousecontrol = mousecontrol;
 
