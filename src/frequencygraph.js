@@ -74,10 +74,10 @@ class FrequencyGraph extends Graph {
 			const offset = 0;         // how many bytes inside the buffer to start from
 			
 
-			this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffers.position);
+			this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffers.screenPosition);
 			
 			this.gl.vertexAttribPointer(
-				this.programInfo.attribLocations.vertexPosition,
+				this.programInfo.attribLocations.vertexScreenPosition,
 				numComponents,
 				type,
 				normalize,
@@ -85,7 +85,50 @@ class FrequencyGraph extends Graph {
 				offset);
 			
 			this.gl.enableVertexAttribArray(
-				this.programInfo.attribLocations.vertexPosition);
+				this.programInfo.attribLocations.vertexScreenPosition);
+
+		}
+
+
+		{
+
+			const numComponents = 2;  // pull out 2 values per iteration
+			const type = this.gl.FLOAT;    // the data in the buffer is 32bit floats
+			const normalize = false;  // don't normalize
+			const stride = 0;         // how many bytes to get from one set of values to the next
+									  // 0 = use type and numComponents above
+			const offset = 0;         // how many bytes inside the buffer to start from
+			
+
+			this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffers.graphPosition);
+
+
+			this.graphPositions[0] = this.xAxis.max;
+			this.graphPositions[1] = this.yAxis.min;
+			this.graphPositions[2] = this.xAxis.min;
+			this.graphPositions[3] = this.yAxis.min;
+			this.graphPositions[4] = this.xAxis.max;
+			this.graphPositions[5] = this.yAxis.max;
+			this.graphPositions[6] = this.xAxis.min;
+			this.graphPositions[7] = this.yAxis.max;
+
+
+			this.gl.bufferData(this.gl.ARRAY_BUFFER, 
+						this.graphPositions,
+						this.gl.DYNAMIC_DRAW);
+
+
+			
+			this.gl.vertexAttribPointer(
+				this.programInfo.attribLocations.vertexGraphPosition,
+				numComponents,
+				type,
+				normalize,
+				stride,
+				offset);
+			
+			this.gl.enableVertexAttribArray(
+				this.programInfo.attribLocations.vertexGraphPosition);
 
 		}
 
@@ -108,11 +151,16 @@ class FrequencyGraph extends Graph {
 
 		const vsSource = `
 
-			attribute vec2 aVertexPosition;
+			attribute vec2 aVertexScreenPosition;
+			attribute vec2 aVertexGraphPosition;
+
+			varying lowp vec2 vVertexGraphPosition;
+
 
 			void main() {
 
-				gl_Position = vec4(aVertexPosition, 0.0, 1.0);
+				gl_Position = vec4(aVertexScreenPosition, 0.0, 1.0);
+				vVertexGraphPosition = aVertexGraphPosition;
 
 			}			
 
@@ -121,9 +169,12 @@ class FrequencyGraph extends Graph {
 
 		const fsSource = `
 
+
+			varying lowp vec2 vVertexGraphPosition;
+
 			void main() {
 
-				gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+				gl_FragColor = vec4(vVertexGraphPosition, 0.0, 1.0);
 
 			}
 
@@ -139,33 +190,48 @@ class FrequencyGraph extends Graph {
 
 		  // Create a buffer for the square's positions.
 
-		const positionBuffer = this.gl.createBuffer();
+		const screenBuffer = this.gl.createBuffer();
 
-		// Select the positionBuffer as the one to apply buffer
+		// Select the screenBuffer as the one to apply buffer
 		// operations to from here out.
 
-		this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
+		this.gl.bindBuffer(this.gl.ARRAY_BUFFER, screenBuffer);
 
 		// Now create an array of positions for the square.
 
-		const positions = [
+		const screenPositions = [
 			 1.0,  1.0,
 			-1.0,  1.0,
 			 1.0, -1.0,
 			-1.0, -1.0,
 		];
 
-		// Now pass the list of positions into WebGL to build the
+		// Now pass the list of screenPositions into WebGL to build the
 		// shape. We do this by creating a Float32Array from the
 		// JavaScript array, then use it to fill the current buffer.
 
 		this.gl.bufferData(this.gl.ARRAY_BUFFER,
-					new Float32Array(positions),
+					new Float32Array(screenPositions),
 					this.gl.STATIC_DRAW);
+
+
+
+
+		this.graphPositions = new Float32Array(screenPositions);
+
+		const graphBuffer = this.gl.createBuffer();
+
+		this.gl.bindBuffer(this.gl.ARRAY_BUFFER, graphBuffer);
+		this.gl.bufferData(this.gl.ARRAY_BUFFER, 
+					this.graphPositions,
+					this.gl.DYNAMIC_DRAW);
+
+
 
 		this.buffers = {
 
-			position: positionBuffer,
+			screenPosition: screenBuffer,
+			graphPosition: graphBuffer
 
 		};
 
@@ -199,7 +265,8 @@ class FrequencyGraph extends Graph {
 
 			attribLocations: {
 
-				vertexPosition: this.gl.getAttribLocation(this.shaderProgram, 'aVertexPosition')
+				vertexScreenPosition: this.gl.getAttribLocation(this.shaderProgram, 'aVertexScreenPosition'),
+				vertexGraphPosition: this.gl.getAttribLocation(this.shaderProgram, 'aVertexGraphPosition')
 
 			},
 

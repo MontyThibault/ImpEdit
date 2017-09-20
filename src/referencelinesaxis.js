@@ -74,9 +74,9 @@ ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale) {
 	var interval = Math.pow(this.line_multiples, scale);
 	var shade = this.getShade(scale);
 
-	var hex = Math.floor(shade * 255);
+	var hex = Math.floor((1 - shade) * 255);
 
-	var color = 'rgb(' + hex + ', ' + hex + ', ' + hex + ')';
+	var color = 'rgba(0, 0, 0, ' + (1 - shade) + ')';
 	context.strokeStyle = color;
 
 
