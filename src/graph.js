@@ -35,6 +35,7 @@ class Graph {
 	constructor(canvas, xAxis, yAxis) {
 
 		this.canvas = canvas;
+		this.context = canvas.getContext('2d');
 
 		this.mousecontrol = new MouseControl(this);
 		this.mouseBindings();
@@ -74,7 +75,7 @@ class Graph {
 	}
 
 
-	draw(context) {
+	draw() {
 
 		if(!this.needsUpdate) {
 			return;
@@ -88,7 +89,7 @@ class Graph {
 			toY = function(x) { return yAxis.graphToCanvas.call(yAxis, x); };
 
 
-		this._drawElements(context, toX, toY);
+		this._drawElements(this.context, toX, toY);
 
 
 		this.needsUpdate = false;
