@@ -1,6 +1,7 @@
 var Graph = require('./graph.js');
 var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
+var BufferLine = require('./bufferline.js');
 
 
 class IRGraph extends Graph {
@@ -22,6 +23,8 @@ class IRGraph extends Graph {
 		this.lineeditor = new LineEditor(this);
 		this.lineeditor.addControlPoint(0, 0);
 
+		this.vizline = new BufferLine(this.vizIR, 96000);
+
 	}
 
 
@@ -30,6 +33,9 @@ class IRGraph extends Graph {
 		super._drawElements(context, toX, toY);
 
 		this.lineeditor.draw(context, toX, toY);
+
+
+		this.vizline.draw(context, toX, toY);
 
 	}
 
@@ -46,6 +52,13 @@ class IRGraph extends Graph {
 	getIR(buffer, samplerate) {
 
 		this.lineeditor.toBuffer(buffer, samplerate);
+
+	}
+
+
+	setVizIR(buffer) {
+
+		this.vizline.buffer = buffer;
 
 	}
 

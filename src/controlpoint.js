@@ -1,4 +1,5 @@
 function ControlPoint(x, y, editor, graph) {
+
 	this.x = x;
 	this.y = y;
 
@@ -7,6 +8,7 @@ function ControlPoint(x, y, editor, graph) {
 
 	this.strokeColor;
 	this.onactiveend();
+	
 }
 
 
@@ -34,22 +36,34 @@ ControlPoint.prototype.distanceTo = function(x, y) {
 
 
 ControlPoint.prototype.ondrag = function(x, y) {
+
 	this.x = this.graph.xAxis.canvasToGraph(x);
 	this.y = this.graph.yAxis.canvasToGraph(y);
 
-	this.editor.sort();
+	this.editor.onPointMove();
+
 };
+
 
 ControlPoint.prototype.onactivestart = function() {
+
 	this.strokeColor = '#FF0000';
+
 };
+
 
 ControlPoint.prototype.onactiveend = function() {
+
 	this.strokeColor = '#000000';
+
 };
 
+
 ControlPoint.prototype.ondblclick = function() {
+
 	this.editor.removeControlPoint(this);
+
 };
+
 
 module.exports = ControlPoint;
