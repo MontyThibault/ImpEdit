@@ -133,6 +133,13 @@ class FrequencyGraph extends Graph {
 		}
 
 
+		{
+
+			this.gl.uniform1fv(this.programInfo.uniformLocations.ir, this.vizIR);
+
+		}
+
+
 		this.gl.useProgram(this.shaderProgram);
 
 
@@ -169,12 +176,16 @@ class FrequencyGraph extends Graph {
 
 		const fsSource = `
 
+			#define buffer_length 3
+
+			uniform lowp float uIR[buffer_length];
+			// uniform int uIRLength;
 
 			varying lowp vec2 vVertexGraphPosition;
 
 			void main() {
 
-				gl_FragColor = vec4(vVertexGraphPosition, 0.0, 1.0);
+				gl_FragColor = vec4(vVertexGraphPosition, uIR[0], 1.0);
 
 			}
 
@@ -297,6 +308,13 @@ class FrequencyGraph extends Graph {
 		}
 
 		return s;
+
+	}
+
+
+	getIR(buffer, samplerate) {
+
+		buffer.fill(0);
 
 	}
 

@@ -1,14 +1,15 @@
 To do:
 
 
--> Fix scollbar bugs
-	-> Fast scrolling inverts graph
-	-> Inverted graph does not render properly (insert some Math.abs's)
+
+-> Begin on Laplace editor. (WebGL implementation)
+
+-> IRGraph draw vizIR
+
+
 
 -> n-pixel padding
 -> Waveform scrubber
--> Begin on Laplace editor. (WebGL implementation)
-
 
 -> Implement log and axial scaling
 

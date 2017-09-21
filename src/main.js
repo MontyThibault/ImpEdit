@@ -19,17 +19,17 @@ var hz = new FrequencyGraph(hz_canvas2d, hz_canvas3d);
 
 window.onresize = function() {
 
-	ir_canvas.width = window.innerWidth;
+	ir_canvas.width = window.innerWidth - 20;
 	ir_canvas.height = 500;
 
 
 	ir.needsUpdate = true;
 
 
-	hz_canvas2d.width = window.innerWidth;
+	hz_canvas2d.width = window.innerWidth - 20;
 	hz_canvas2d.height = 500;
 
-	hz_canvas3d.width = window.innerWidth;
+	hz_canvas3d.width = window.innerWidth - 20;
 	hz_canvas3d.height = 500;
 
 	hz_div.style = 'height: 500px';
@@ -43,9 +43,23 @@ window.onresize = function() {
 	draw();
 };
 
+
+
+var irBuffer = new Float32Array(1000);
+hz.setVizIR(irBuffer);
+
+var hzBuffer = new Float32Array(1000);
+ir.setVizIR(hzBuffer);
+
+
 function draw() {
 
 	requestAnimationFrame(draw);
+
+
+	ir.getIR(irBuffer, 96000);
+	hz.getIR(hzBuffer, 96000);
+
 
 	ir.draw();
 	hz.draw();

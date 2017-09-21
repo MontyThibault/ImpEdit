@@ -40,6 +40,10 @@ class Graph {
 		this.mousecontrol = new MouseControl(this);
 		this.mouseBindings();
 
+
+		this.vizIR = [];
+
+
 		this.needsUpdate = true;
 	}
 
@@ -132,6 +136,13 @@ class Graph {
 
 
 		document.addEventListener('mouseup', that.mousecontrol.onmouseup.bind(that.mousecontrol));
+
+	}
+
+
+	setVizIR(buffer) {
+
+		this.vizIR = buffer;
 
 	}
 
