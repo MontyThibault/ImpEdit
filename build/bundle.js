@@ -879,7 +879,6 @@ class FrequencyGraph extends Graph {
 
 
 		{
-
 			this.gl.uniform1fv(this.programInfo.uniformLocations.ir, this.vizIR);
 
 		}
@@ -921,12 +920,38 @@ class FrequencyGraph extends Graph {
 
 		const fsSource = `
 
-			#define buffer_length 3
+			#define buffer_length 1000
+			#define samplerate 96000.0
 
 			uniform lowp float uIR[buffer_length];
 			// uniform int uIRLength;
 
 			varying lowp vec2 vVertexGraphPosition;
+
+			
+			lowp float computeLaplace(vec2 graphPosition) {
+
+
+				// Sum over terms f(t)e^st
+				// recall e^st = e^(re(s)t)(cos (imag s)t + i sin (imag s)t)
+
+				lowp float re_sum = 0.0;
+				lowp float im_sum = 0.0;
+				lowp float t;
+
+				for(int i = 0; i < buffer_length; i++) {
+
+					t = float(i) / samplerate;	
+
+					re_sum += exp(graphPosition.x) * cos(graphPosition.y * t);
+					im_sum += exp(graphPosition.x) * sin(graphPosition.y * t);
+
+				}
+
+				return re_sum;
+
+			}
+
 
 			void main() {
 
@@ -1067,6 +1092,7 @@ class FrequencyGraph extends Graph {
 
 
 module.exports = FrequencyGraph;
+
 },{"./axis.js":5,"./graph.js":8,"./logaxis.js":12}],8:[function(require,module,exports){
 var MouseControl = require('./mousecontrol.js');
 var ReferenceLines = require('./referencelines.js');
@@ -1373,8 +1399,8 @@ LineEditor.prototype.toBuffer = function(buffer, samplerate) {
 
 	// cp1 is the control point directly before the current point
 	// cp2 is the control point directly after the current point
-	var cp1 = this.controlpoints[0].x,
-		cp2 = this.controlpoints[1].x;
+	var cp1 = this.controlpoints[0],
+		cp2 = this.controlpoints[1];
 
 	var cpi = 1;
 	var escape = false;
@@ -1384,12 +1410,13 @@ LineEditor.prototype.toBuffer = function(buffer, samplerate) {
 		var time = i / samplerate;
 
 
-		while(time > cp2) {
+		while(time > cp2.x) {
 
 			cpi++;
 
 			// If this point is beyond all control points.
-			if(this.cpi === this.controlpoints.length) {
+			if(cpi  === this.controlpoints.length) {
+				cpi--;
 				buffer[i] = 0;
 
 				escape = true;
@@ -1397,7 +1424,7 @@ LineEditor.prototype.toBuffer = function(buffer, samplerate) {
 			}
 
 			cp1 = cp2;
-			cp2 = this.controlpoints[cpi].x;
+			cp2 = this.controlpoints[cpi];
 
 		}
 
@@ -1408,13 +1435,15 @@ LineEditor.prototype.toBuffer = function(buffer, samplerate) {
 
  		
  		// If this point is before all control points.
-		if(time < cp1) {
+		if(time < cp1.x) {
 			buffer[i] = 0;
 			continue;
 		}
 
 
-		buffer[i] = (time - cp1.x) * (cp2.y - cp1.y) / (cp2.x - cp1.x);
+		var slope = (cp2.y - cp1.y) / (cp2.x - cp1.x);
+		
+		buffer[i] = cp1.y + (time - cp1.x) * slope;
 
 	}
 
@@ -1422,6 +1451,7 @@ LineEditor.prototype.toBuffer = function(buffer, samplerate) {
 
 
 module.exports = LineEditor;
+
 },{"./controlpoint.js":6,"./line.js":10}],12:[function(require,module,exports){
 var Axis = require('./axis.js');
 
@@ -1526,6 +1556,8 @@ function draw() {
 	ir.getIR(irBuffer, 96000);
 	hz.getIR(hzBuffer, 96000);
 
+	ir.needsUpdate = hz.needsUpdate = ir.needsUpdate || hz.needsUpdate;
+
 
 	ir.draw();
 	hz.draw();
@@ -1542,6 +1574,7 @@ window.onresize();
 
 var audio = new Audio();
 attachAudioDOM(audio);
+
 },{"./audio.js":3,"./audioDOM.js":4,"./frequencygraph.js":7,"./irgraph.js":9}],14:[function(require,module,exports){
 
 function debounce(f, delay) {

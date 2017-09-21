@@ -60,6 +60,8 @@ function draw() {
 	ir.getIR(irBuffer, 96000);
 	hz.getIR(hzBuffer, 96000);
 
+	ir.needsUpdate = hz.needsUpdate = ir.needsUpdate || hz.needsUpdate;
+
 
 	ir.draw();
 	hz.draw();
