@@ -23,13 +23,9 @@ function ReferenceLines(principal_axis, secondary_axis) {
 
 ReferenceLines.prototype._getScaleFactor = function(point, ref) {
 
-	var epsilon = 1e-10;
+	var span = ref.axis.canvasToGraphInterval(point, ref.axis.get_full_extent());
 
-	var rate = (ref.axis.canvasToGraph(point + epsilon) - ref.axis.canvasToGraph(point)) / epsilon;
-
-	var spanAtRate = rate * ref.axis.get_full_extent();
-
-	return Math.log(spanAtRate) / Math.log(ref.line_multiples);
+	return Math.log(span) / Math.log(ref.line_multiples);
 
 }
 
@@ -64,13 +60,16 @@ ReferenceLines.prototype._getDrawingArray = function(ref) {
 	var a = [];
 
 	for(var scale = scalefactorMin; scale < scalefactorMax; scale++) {
-		
 
-		// Order by scale, not shade
 
-		a.push([scale, scale, function(context, toX, toY, scale) {
-			ref.drawLines(context, toX, toY, scale);
-		}]);
+		a.push([scale, function(scale, context, toX, toY) {
+			ref.drawLinesAtScale(context, toX, toY, scale);
+		}.bind(this, scale)]);
+
+
+		a.push([scale - 100, function(scale, context, toX, toY) {
+			ref.drawLabelsAtScale(context, toX, toY, scale);
+		}.bind(this, scale)]);
 
 	}
 
@@ -97,7 +96,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 	for(var i = 0; i < a.length; i++) {
 
 		// Draw
-		a[i][2](context, toX, toY, a[i][1]);
+		a[i][1](context, toX, toY);
 	}
 
 
@@ -105,8 +104,8 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 	this.xRef.drawSpecialLines(context, toX, toY);
 	this.yRef.drawSpecialLines(context, toX, toY);
 
-	this.xRef.drawLabels(context, toX, toY);
-	this.yRef.drawLabels(context, toX, toY);
+	this.xRef.drawSpecialLabels(context, toX, toY);
+	this.yRef.drawSpecialLabels(context, toX, toY);
 
 
 

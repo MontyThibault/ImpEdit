@@ -1,7 +1,8 @@
 To do:
 
--> Implement log and axial scaling
+
 -> Log scaling in hand slider
+-> Fix labels
 -> Implement log coloring in webGL script
 
 -> vizIR sum
@@ -9,6 +10,8 @@ To do:
 
 -> n-pixel padding
 -> Waveform scrubber
+
+-> Implement axial scaling
 
 
 

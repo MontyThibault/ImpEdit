@@ -59,6 +59,20 @@ class Axis {
 	}
 
 
+	graphToCanvasInterval(refPoint, interval) {
+
+		return this.graphToCanvas(interval) - this.graphToCanvas(0);
+
+	}
+
+
+	canvasToGraphInterval(refPoint, interval) {
+
+		return this.canvasToGraph(interval) - this.canvasToGraph(0);
+
+	}
+
+
 	zoomIn() {
 
 		var min = this.min * 0.9 + this.max * 0.1;
