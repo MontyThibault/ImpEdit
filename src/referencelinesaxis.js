@@ -17,12 +17,25 @@ function ReferenceLinesAxis(principal_axis, secondary_axis) {
 	this.specialLabels = [];
 }
 
+
 ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
 
 	var begin = Math.ceil(this.axis.min / interval) * interval,
 		end = Math.floor(this.axis.max / interval) * interval;
 
+
+	var pixelThresh = 3;
+
+
 	for(var j = begin; j <= end; j += interval) {
+
+
+		if(this.axis.graphToCanvas(j + interval) - this.axis.graphToCanvas(j) < pixelThresh) {
+
+			break;
+
+		}
+
 
 		f.call(this, j);
 
@@ -31,14 +44,26 @@ ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
 };
 
 
-ReferenceLinesAxis.prototype.getShade = function(scale) {
+ReferenceLinesAxis.prototype.getShade = function(scale, refPoint) {
 
 	// Get canvas distance
 
 	var interval = Math.pow(this.line_multiples, scale);
-	var cd = this.axis.graphToCanvas(interval) - this.axis.graphToCanvas(0);
+
+
+	// Change this to be more instantaneous 
+
+	var epsilon = 1e-10;
+
+	var cd = this.axis.graphToCanvas(refPoint + epsilon) - this.axis.graphToCanvas(refPoint);
+
+	cd /= epsilon;
+	cd *= interval;
+
 
 	// At this distance, lines appear completely black.
+	// Linear interpolation from this to zero.
+
 	var black_width = 200;
 
 	return 1 - Math.max(0, Math.min(1, Math.abs(cd) / black_width));
@@ -69,36 +94,83 @@ ReferenceLinesAxis.prototype.drawLine = function(context, toX, toY, j) {
 };
 
 
+// Eliminate duplication in this method
+
 ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale) {
 	
 	var interval = Math.pow(this.line_multiples, scale);
-	var shade = this.getShade(scale);
-
-	var hex = Math.floor((1 - shade) * 255);
-
-	var color = 'rgba(0, 0, 0, ' + (1 - shade) + ')';
-	context.strokeStyle = color;
 
 
-	context.beginPath();
+	if(this.axis.type === this.axis.TYPE_LINEAR) {
 
-	var that = this;
-	this._iterateIntervalOverAxis(interval, function(j) {
 
-		for(var i = 0; i < this.specialLabels.length; i++) {
+		context.beginPath();
 
-			if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
-				return;
+
+		var shade = this.getShade(scale, 0);
+
+		var hex = Math.floor((1 - shade) * 255);
+
+		var color = 'rgba(0, 0, 0, ' + (1 - shade) + ')';
+		context.strokeStyle = color;
+
+
+		var that = this;
+		this._iterateIntervalOverAxis(interval, function(j) {
+
+			for(var i = 0; i < this.specialLabels.length; i++) {
+
+				if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
+					return;
+				}
+
 			}
 
-		}
+
+			that.drawLine(context, toX, toY, j);
+
+		});
+
+		context.stroke();
 
 
-		that.drawLine(context, toX, toY, j);
 
-	});
+	} else if(this.axis.type === this.axis.TYPE_LOG) {
 
-	context.stroke();
+
+
+			var that = this;
+		this._iterateIntervalOverAxis(interval, function(j) {
+
+			for(var i = 0; i < this.specialLabels.length; i++) {
+
+				if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
+					return;
+				}
+
+			}
+
+
+			context.beginPath();
+
+
+			var shade = this.getShade(scale, j);
+
+			var hex = Math.floor((1 - shade) * 255);
+
+			var color = 'rgba(0, 0, 0, ' + (1 - shade) + ')';
+			context.strokeStyle = color;
+
+
+
+			that.drawLine(context, toX, toY, j);
+
+			context.stroke();
+
+		});
+
+
+	}
 
 };
 

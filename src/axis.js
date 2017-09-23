@@ -5,6 +5,12 @@ class Axis {
 
 	constructor(orientation, min, max, get_full_extent) {
 
+		this.TYPE_LINEAR = 0;
+		this.TYPE_LOG = 1;
+
+
+		this.type = 0;
+		
 
 		// true when x is the principal axis, false otherwise
 		this.orientation = orientation;
@@ -136,7 +142,6 @@ class Axis {
 	}
 
 }
-
 
 
 module.exports = Axis;

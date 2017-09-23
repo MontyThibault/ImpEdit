@@ -13,50 +13,66 @@ function ReferenceLines(principal_axis, secondary_axis) {
 
 
 
+// Take rate of change at point (in canvas-space), expanded to encompass the whole canvas,
+// and return log in base of line_multiples.
+
+// ex. If non-linear scale has rate of change 10 at point P, and canvas is 100 pixels,
+// then this returns log_{line_multiples} 1000.
+
+// Point argument is irrelevant for linear scaling.
+
+ReferenceLines.prototype._getScaleFactor = function(point, ref) {
+
+	var epsilon = 1e-10;
+
+	var rate = (ref.axis.canvasToGraph(point + epsilon) - ref.axis.canvasToGraph(point)) / epsilon;
+
+	var spanAtRate = rate * ref.axis.get_full_extent();
+
+	return Math.log(spanAtRate) / Math.log(ref.line_multiples);
+
+}
+
+
+
 // Generate array of shades and drawing callables
 ReferenceLines.prototype._getDrawingArray = function(ref) {
 
 
-	// scale-x refers to logarithmic values
+	// scale- before variables refers to logarithmic values
 
 	// Screen span
 
-	var scalefactor = Math.log(Math.abs(ref.axis.max - ref.axis.min)) / 
-		Math.log(ref.line_multiples);
+	var scalefactorTop = this._getScaleFactor(0, ref),
+		scalefactorBottom = this._getScaleFactor(ref.axis.get_full_extent(), ref);
 
 
+	// Draw this many scale levels below min 
 
-	// ex. scalelevels = 2 means to draw two "levels" of reference lines
-	// with shading proportional to canvas distance.
+	var scalefactorCutoff = 1.5;
 
-	// Fractional values are allowed. 
 
-	// screenwidth ~ ref.line_multiples ^ scalelevels
-	// -> scalelevels ~ log_{ref.line_multiples} screenwidth 
+	var scalefactorMin = Math.min(scalefactorTop, scalefactorBottom) - scalefactorCutoff,
+		scalefactorMax = Math.max(scalefactorTop, scalefactorBottom);
 
-	var scalelevels = Math.log(ref.axis.get_full_extent());
 
-	// We wish that screenwidth = 500 -> scalelevels = 2
+	scalefactorMin = Math.floor(scalefactorMin);
+	scalefactorMax = Math.ceil(scalefactorMax);
 
-	scalelevels /= Math.log(500);
-	scalelevels *= 2;
 
 
 	var a = [];
 
-	for(var i = 0; i < scalelevels; i++) {
+	for(var scale = scalefactorMin; scale < scalefactorMax; scale++) {
+		
 
-		var scale = Math.floor(scalefactor) - i;
-		var shade = ref.getShade(scale);
+		// Order by scale, not shade
 
-
-		// Revise this
-		a.push([shade, scale, function(context, toX, toY, scale) {
+		a.push([scale, scale, function(context, toX, toY, scale) {
 			ref.drawLines(context, toX, toY, scale);
 		}]);
 
 	}
-
 
 	return a;
 
