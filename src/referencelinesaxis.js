@@ -1,6 +1,7 @@
 
 
 function ReferenceLinesAxis(principal_axis, secondary_axis) {
+
 	this.axis = principal_axis;
 
 	// Required only for drawing
@@ -24,9 +25,32 @@ ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
 		max = Math.max(this.axis.min, this.axis.max);
 
 
-	var begin = Math.floor(min / interval) * interval,
-		end = Math.ceil(max / interval) * interval;
 
+	var begin = Math.round(min / interval) * interval,
+		end = Math.round(max / interval) * interval;
+
+
+	// In this case, we wish to begin from the top and iterate downwards
+	// as to not disrupt the order of the breaking functionality.
+
+	if(this.axis.type === this.axis.TYPE_LOG && this.axis.min < 0) {
+
+		for(var j = end; j >= begin; j -= interval) {
+
+			if(f.call(this, j)) {
+
+				break;
+
+			}
+
+		}
+
+		return;
+
+	}
+
+
+	// Regular iteration
 
 	for(var j = begin; j <= end; j += interval) {
 
@@ -68,6 +92,13 @@ ReferenceLinesAxis.prototype.drawLine = function(context, toX, toY, j) {
 
 	function lineTo(x, y) {
 		context.lineTo(toX(x), toY(y));
+	}
+
+
+	if(this.axis.type === 1) {
+
+		abc=123;
+
 	}
 
 
@@ -146,7 +177,7 @@ ReferenceLinesAxis.prototype.drawLinesAtScale = function(context, toX, toY, scal
 			}
 
 
-			if(this.axis.graphToCanvasInterval(j, interval) < pixelThresh) {
+			if(Math.abs(this.axis.graphToCanvasInterval(j, interval)) < pixelThresh) {
 
 				return true;
 

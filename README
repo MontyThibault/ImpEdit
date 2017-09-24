@@ -1,10 +1,8 @@
 To do:
 
 
--> Log scaling in hand slider
--> Fix negative axis scaling bug (insert Math.abs's)
--> Fix negative log scaling bug
-
+-> Handle bug (drag until it's too small -> can't drag anymore)
+-> Handle inversion bug
 
 
 -> Implement log coloring in webGL script
@@ -22,8 +20,10 @@ To do:
 // End of weekend goals
 
 
--> Add a "convert to IR" button that destroys oscillators
+
 -> Implement axial scaling for oscillator phase and magnitude
+
+-> Add a "convert to IR" button that destroys oscillators
 
 -> Graphical table to edit oscillator values
 

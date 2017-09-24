@@ -13,7 +13,7 @@ class FrequencyGraph extends Graph {
 
 		
 		this.xAxis = new LogAxis(true, 5, 10000, function() { return canvas2d.width; });
-		this.yAxis = new LogAxis(false, 1, 100, function() { return canvas2d.height; });
+		this.yAxis = new LogAxis(false, -1, -100, function() { return canvas2d.height; });
 
 		this.initAxes(this.xAxis, this.yAxis);
 
@@ -175,6 +175,11 @@ class FrequencyGraph extends Graph {
 
 		const vsSource = `
 
+			#define TYPE_LINEAR 0
+			#define TYPE_LOG 1
+			#define TYPE_NEGATIVELOG 2
+
+
 			uniform lowp int uAxisTypes[2];
 
 			attribute vec2 aVertexScreenPosition;
@@ -190,15 +195,16 @@ class FrequencyGraph extends Graph {
 
 				vVertexGraphPosition = aVertexGraphPosition;
 
-				if(uAxisTypes[0] == 1) {
+				if((uAxisTypes[0] == TYPE_LOG) || (uAxisTypes[0] == TYPE_NEGATIVELOG)) {
 
-					vVertexGraphPosition.x = log(vVertexGraphPosition.x);
+					vVertexGraphPosition.x = log(abs(vVertexGraphPosition.x));
 
 				}
 
-				if(uAxisTypes[1] == 1) {
 
-					vVertexGraphPosition.y = log(vVertexGraphPosition.y);
+				if((uAxisTypes[1] == TYPE_LOG) || (uAxisTypes[1] == TYPE_NEGATIVELOG)) {
+
+					vVertexGraphPosition.y = log(abs(vVertexGraphPosition.y));
 
 				}
 
@@ -212,6 +218,12 @@ class FrequencyGraph extends Graph {
 			#define buffer_length 1000
 			#define samplerate 96000.0
 			#define pi 3.1415926536
+
+			#define TYPE_LINEAR 0
+			#define TYPE_LOG 1
+			#define TYPE_NEGATIVELOG 2
+
+
 
 			uniform lowp int uAxisTypes[2];
 			uniform lowp float uIR[buffer_length];
@@ -271,16 +283,27 @@ class FrequencyGraph extends Graph {
 				lowp vec2 vgp = vVertexGraphPosition;
 
 
-				if(uAxisTypes[0] == 1) {
+				if(uAxisTypes[0] == TYPE_LOG) {
 
 					vgp.x = exp(vgp.x);
 
 				}
 
+				if(uAxisTypes[0] == TYPE_NEGATIVELOG) {
 
-				if(uAxisTypes[1] == 1) {
+					vgp.x = -exp(vgp.x);
+
+				}
+
+				if(uAxisTypes[1] == TYPE_LOG) {
 
 					vgp.y = exp(vgp.y);
+
+				}
+
+				if(uAxisTypes[1] == TYPE_NEGATIVELOG) {
+
+					vgp.y = -exp(vgp.y);
 
 				}
 
@@ -348,6 +371,20 @@ class FrequencyGraph extends Graph {
 
 		this.axisTypes[0] = this.xAxis.type;
 		this.axisTypes[1] = this.yAxis.type;
+
+
+		if(this.xAxis.sign === -1) {
+
+			this.axisTypes[0] = 2;
+
+		}
+
+		if(this.yAxis.sign === -1) {
+
+			this.axisTypes[1] = 2;
+
+		}
+
 
 		const axisBuffer = this.gl.createBuffer();
 
