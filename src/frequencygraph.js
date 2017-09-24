@@ -13,7 +13,7 @@ class FrequencyGraph extends Graph {
 
 		
 		this.xAxis = new LogAxis(true, 5, 10000, function() { return canvas2d.width; });
-		this.yAxis = new LogAxis(false, -1, -100, function() { return canvas2d.height; });
+		this.yAxis = new LogAxis(false, -1000, -1, function() { return canvas2d.height; });
 
 		this.initAxes(this.xAxis, this.yAxis);
 
@@ -23,7 +23,9 @@ class FrequencyGraph extends Graph {
 
 
 		this.canvas3d = canvas3d;
-		this.gl = canvas3d.getContext('webgl');
+		this.gl = canvas3d.getContext('webgl', {
+			antialias: true
+		});
 
 		if(!this.gl) {
 
@@ -257,24 +259,52 @@ class FrequencyGraph extends Graph {
 			
 			lowp vec3 color_interp(lowp float x) {
 
-				lowp vec3 min = vec3(1.0, 1.0, 1.0);
-				lowp vec3 max = vec3(1.0, 1.0, 0.0);
 
-				lowp float minX = 0.0;
-				lowp float maxX = 10.0;
+				lowp vec3 min = vec3(0.5, 0.3, 1.0);
+				lowp vec3 max = vec3(0.0, 1.0, 1.0);
+
+
+				if(x < 0.0) {
+
+					min.x += 0.5;
+					max.x += 0.5;
+
+					x = -x;
+
+				} 
+
+
+				x = log(x);
+
+
+				
+
+				lowp float minX = -3.0;
+				lowp float maxX = 8.0;
 
 
 				if(x <= minX) {
-					return min;
+					return vec3(1.0, 0.0, 1.0);
+				
 				}
 
 				if(x >= maxX) {
-					return max;
+					return vec3(1.0, 1.0, 1.0);
 				}
 
 				return min + (max - min) * ((x - minX) / (maxX - minX));
 
 			}
+
+
+			lowp vec3 hsv2rgb(lowp vec3 c) {
+			
+				lowp vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+				lowp vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+				return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+
+			}
+
 
 
 			void main() {
@@ -310,7 +340,7 @@ class FrequencyGraph extends Graph {
 
 				lowp float laplace = computeLaplace(vgp);
 
-				gl_FragColor = vec4(color_interp(laplace), 1.0);
+				gl_FragColor = vec4(hsv2rgb(color_interp(laplace)), 1.0);
 
 			}
 
