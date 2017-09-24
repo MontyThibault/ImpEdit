@@ -89,19 +89,9 @@ class CornerDraggable {
 	}
 
 
-	ondrag(x, y) {
+	ondrag(x, y, disableLimits) {
 
 		if(this.prevDragX !== undefined) {
-
-
-			// Disable corners if corners are within dragging threshold
-
-			if(Math.abs(this.parent.endP - this.parent.startP) < this.parent.corner_drag_thresh) {
-
-				this.onmouseup();
-				return;
-
-			}
 
 
 			if(this.parent.axis.orientation) {
@@ -117,16 +107,54 @@ class CornerDraggable {
 			}
 
 
-			// var graphDistance = this.parent.axis.interval(this.parent.sliderToGraph, p, dp);
+
+			// Avoid handle overlap.
+
+			if(!disableLimits) {
+
+				var max_dp = Math.abs(this.parent.endP - this.parent.startP) - this.parent.corner_drag_thresh;
+
+				if(this.bound_type === 'min') {
+
+					dp = Math.min(dp, max_dp);
+
+				} else {
+
+					dp = Math.max(dp, -max_dp);
+
+				}
+
+			}
+
+
 
 			var graphDistance = this.parent.sliderToGraphInterval(this.p, dp);
 
 			this.parent.axis.panGraphMinMax(-graphDistance, this.bound_type);
 
+
+
+			if(this.parent.axis.orientation) {
+
+				this.prevDragX += dp;
+
+			} else {
+
+
+				this.prevDragY += dp;
+
+			}
+
+
+		} else {
+
+			this.prevDragX = x;
+			this.prevDragY = y;
+
 		}
 
-		this.prevDragX = x;
-		this.prevDragY = y;
+		// this.prevDragX = this.prevDragX;
+		// this.prevDragY = y;
 
 	}
 
@@ -428,8 +456,8 @@ class RangeSlider {
 			}
 
 
-			this.corner_min.ondrag(x, y);
-			this.corner_max.ondrag(x, y);
+			this.corner_max.ondrag(x, y, true);
+			this.corner_min.ondrag(x, y, true);
 
 		}
 

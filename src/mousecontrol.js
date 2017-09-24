@@ -182,6 +182,8 @@ MouseControl.prototype.onscroll = function(e) {
 		this.graph.zoomOut();
 	}
 
+	this.onmousemove(e);
+
 };
 
 
