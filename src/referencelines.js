@@ -25,7 +25,7 @@ ReferenceLines.prototype._getScaleFactor = function(point, ref) {
 
 	var span = ref.axis.canvasToGraphInterval(point, ref.axis.get_full_extent());
 
-	return Math.log(span) / Math.log(ref.line_multiples);
+	return Math.log(Math.abs(span)) / Math.log(ref.line_multiples);
 
 }
 
@@ -88,6 +88,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 	// Sort by /descending/ shade. i.e. darker groups of lines
 	// are drawn later
+	
 	a.sort(function(a, b) {
 		return b[0] - a[0];
 	});

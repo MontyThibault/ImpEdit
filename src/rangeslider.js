@@ -121,9 +121,6 @@ class CornerDraggable {
 
 			var graphDistance = this.parent.sliderToGraphInterval(this.p, dp);
 
-
-
-
 			this.parent.axis.panGraphMinMax(-graphDistance, this.bound_type);
 
 		}
@@ -152,6 +149,7 @@ class RangeSlider {
 		this.startP;
 		this.endP;
 		this.midS;
+
 		this.minP;
 		this.maxP;
 
@@ -271,7 +269,6 @@ class RangeSlider {
 
 			context.beginPath();
 
-			context.beginPath();
 			context.strokeStyle = sl[2];
 
 			if(sl.length === 4) {

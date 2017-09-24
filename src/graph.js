@@ -100,18 +100,24 @@ class Graph {
 
 
 	zoomIn() {
+
 		this.xAxis.zoomIn();
 		this.yAxis.zoomIn();
 
 		this.needsUpdate = true;
+
 	}
 
+
 	zoomOut() {
+
 		this.xAxis.zoomOut();
 		this.yAxis.zoomOut();
 
 		this.needsUpdate = true;
+
 	}
+	
 
 	pan(diffX, diffY, posX, posY) {
 

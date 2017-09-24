@@ -594,27 +594,63 @@ class Axis {
 
 	_limits() {
 
-		this.min = (this.min > this.minLimit) ? this.min : this.minLimit;
-		this.max = (this.max < this.maxLimit) ? this.max : this.maxLimit;
+		if(this.minLimit < this.maxLimit) {
+
+			this.min = (this.min > this.minLimit) ? this.min : this.minLimit;
+			this.max = (this.max < this.maxLimit) ? this.max : this.maxLimit;
+
+		} else {
+
+			this.min = (this.min < this.minLimit) ? this.min : this.minLimit;
+			this.max = (this.max > this.maxLimit) ? this.max : this.maxLimit;
+
+		}
+		
 
 	}
 
 
 	_fixedWidthLimits() {
 
-		if(this.min < this.minLimit) {
 
-			var diff = this.minLimit - this.min;
+		if(this.minLimit < this.maxLimit) {
 
-			this.min += diff;
-			this.max += diff;
 
-		} else if(this.max > this.maxLimit) {
+			if(this.min < this.minLimit) {
 
-			var diff = this.max - this.maxLimit;
+				var diff = this.minLimit - this.min;
 
-			this.min -= diff;
-			this.max -= diff;
+				this.min += diff;
+				this.max += diff;
+
+			} else if(this.max > this.maxLimit) {
+
+				var diff = this.max - this.maxLimit;
+
+				this.min -= diff;
+				this.max -= diff;
+
+			}
+
+
+		} else {
+
+
+			if(this.min > this.minLimit) {
+
+				var diff = this.minLimit - this.min;
+
+				this.min += diff;
+				this.max += diff;
+
+			} else if(this.max < this.maxLimit) {
+
+				var diff = this.max - this.maxLimit;
+
+				this.min -= diff;
+				this.max -= diff;
+
+			}
 
 		}
 
@@ -721,9 +757,7 @@ class Axis {
 
 	panCanvas(diff, pos) {
 
-		var offset = this.graphToCanvas(this.min);
-
-		diff = this.canvasToGraph(diff + offset) - this.min;
+		diff = this.canvasToGraphInterval(pos, diff);
 
 		this.panGraph(diff);
 
@@ -1537,18 +1571,24 @@ class Graph {
 
 
 	zoomIn() {
+
 		this.xAxis.zoomIn();
 		this.yAxis.zoomIn();
 
 		this.needsUpdate = true;
+
 	}
 
+
 	zoomOut() {
+
 		this.xAxis.zoomOut();
 		this.yAxis.zoomOut();
 
 		this.needsUpdate = true;
+
 	}
+	
 
 	pan(diffX, diffY, posX, posY) {
 
@@ -1650,7 +1690,7 @@ class IRGraph extends Graph {
 		super(canvas);
 
 		this.xAxis = new Axis(true, -1, 2, function() { return canvas.width; });
-		this.yAxis = new Axis(false, -1.5, 1.5, function() { return canvas.height; });
+		this.yAxis = new Axis(false, 1.5, -1.5, function() { return canvas.height; });
 
 		this.initAxes(this.xAxis, this.yAxis);
 
@@ -2574,9 +2614,6 @@ class CornerDraggable {
 
 			var graphDistance = this.parent.sliderToGraphInterval(this.p, dp);
 
-
-
-
 			this.parent.axis.panGraphMinMax(-graphDistance, this.bound_type);
 
 		}
@@ -2605,6 +2642,7 @@ class RangeSlider {
 		this.startP;
 		this.endP;
 		this.midS;
+
 		this.minP;
 		this.maxP;
 
@@ -2724,7 +2762,6 @@ class RangeSlider {
 
 			context.beginPath();
 
-			context.beginPath();
 			context.strokeStyle = sl[2];
 
 			if(sl.length === 4) {
@@ -2887,20 +2924,6 @@ class RangeSlider {
 			this.corner_min.ondrag(x, y);
 			this.corner_max.ondrag(x, y);
 
-
-			// // Revise here
-			// // Consider updating both corner draggables
-
-
-			// var visualDiff = this.maxP - this.minP,
-			// 	graphDiff = this.axis.maxLimit - this.axis.minLimit;
-
-
-			// // dx / visualDiff = m / graphDiff
-			// var m = -graphDiff * dp / visualDiff;
-
-			// this.axis.panGraph(m);
-
 		}
 
 		this.prevDragX = x;
@@ -3035,7 +3058,7 @@ ReferenceLines.prototype._getScaleFactor = function(point, ref) {
 
 	var span = ref.axis.canvasToGraphInterval(point, ref.axis.get_full_extent());
 
-	return Math.log(span) / Math.log(ref.line_multiples);
+	return Math.log(Math.abs(span)) / Math.log(ref.line_multiples);
 
 }
 
@@ -3098,6 +3121,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 	// Sort by /descending/ shade. i.e. darker groups of lines
 	// are drawn later
+	
 	a.sort(function(a, b) {
 		return b[0] - a[0];
 	});
@@ -3146,8 +3170,12 @@ function ReferenceLinesAxis(principal_axis, secondary_axis) {
 
 ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
 
-	var begin = Math.floor(this.axis.min / interval) * interval,
-		end = Math.ceil(this.axis.max / interval) * interval;
+	var min = Math.min(this.axis.min, this.axis.max),
+		max = Math.max(this.axis.min, this.axis.max);
+
+
+	var begin = Math.floor(min / interval) * interval,
+		end = Math.ceil(max / interval) * interval;
 
 
 	for(var j = begin; j <= end; j += interval) {
