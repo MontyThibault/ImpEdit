@@ -4,6 +4,7 @@ var IRGraph = require("./irgraph.js");
 var FrequencyGraph = require("./frequencygraph.js");
 var Audio = require("./audio.js");
 var attachAudioDOM = require("./audioDOM.js");
+var BufferSum = require('./buffersum.js');
 
 
 var ir_canvas = document.getElementById('ir_graph');
@@ -34,7 +35,6 @@ window.onresize = function() {
 
 	hz_div.style = 'height: 500px';
 
-
 	hz.needsUpdate = true;
 
 	hz.gl.viewport(0, 0, hz_canvas3d.width, hz_canvas3d.height);
@@ -45,20 +45,55 @@ window.onresize = function() {
 
 
 
-var irBuffer = new Float32Array(1000);
-hz.setVizIR(irBuffer);
 
-var hzBuffer = new Float32Array(1000);
-ir.setVizIR(hzBuffer);
 
+
+var totalBuffer = new BufferSum(hz.hzeditor, ir.lineeditor);
+
+ir.setVizIR(totalBuffer.buffer);
+hz.setVizIR(totalBuffer.buffer);
+
+
+//////////////////////////
+
+
+var audio = new Audio();
+attachAudioDOM(audio);
+
+
+
+function debounce(f, delay) {
+  var timer = null;
+
+  return function () {
+    var context = this, 
+    	args = arguments;
+
+    clearTimeout(timer);
+
+    timer = setTimeout(function () {
+      f.apply(context, args);
+    }, delay);
+  };
+}
+
+
+
+
+totalBuffer.addObserver(debounce(function() {
+
+	audio.update_convolver(this.buffer);
+
+}, 1000));
+
+
+
+var m = 0;
 
 function draw() {
 
 	requestAnimationFrame(draw);
 
-
-	ir.getIR(irBuffer, 96000);
-	hz.getIR(hzBuffer, 96000);
 
 	ir.needsUpdate = hz.needsUpdate = ir.needsUpdate || hz.needsUpdate;
 
@@ -76,5 +111,3 @@ window.onresize();
 
 
 
-var audio = new Audio();
-attachAudioDOM(audio);

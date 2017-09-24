@@ -34,11 +34,15 @@ function MouseControl(graph) {
 
 
 MouseControl.prototype._getX = function(e) {
+
 	return e.clientX - this.graph.canvas.getBoundingClientRect().left;
+
 };
 
 MouseControl.prototype._getY = function(e) {
+
 	return e.clientY - this.graph.canvas.getBoundingClientRect().top;
+	
 };
 
 
@@ -103,6 +107,7 @@ MouseControl.prototype.removeObject = function(o) {
 	if(i > -1) {
 		this.objects.splice(i, 1);
 	}
+	
 };
 
 
@@ -123,7 +128,7 @@ MouseControl.prototype.onmousemove = function(e) {
 		var x = this._getX(e);
 		var y = this._getY(e);
 
-		this.graph.pan(x - this.oldClientX, y - this.oldClientY);
+		this.graph.pan(x - this.oldClientX, y - this.oldClientY, x, y);
 
 		this.oldClientX = x;
 		this.oldClientY = y;

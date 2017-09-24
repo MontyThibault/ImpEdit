@@ -100,20 +100,26 @@ CornerDraggable.prototype.ondrag = function(x, y) {
 
 
 		if(this.parent.axis.orientation) {
-			var dp = x - this.prevDragX;
+
+			var dp = x - this.prevDragX,
+				p = x;
+
 		} else {
-			var dp = y - this.prevDragY;
+
+			var dp = y - this.prevDragY,
+				p = y;
+
 		}
 
 
-		var visualDiff = this.parent.maxP - this.parent.minP,
-			graphDiff = this.parent.axis.maxLimit - this.parent.axis.minLimit;
+		// var graphDistance = this.parent.axis.interval(this.parent.sliderToGraph, p, dp);
+
+		var graphDistance = this.parent.sliderToGraphInterval(p, dp);
 
 
-		// dx / visualDiff = m / graphDiff
-		var m = -graphDiff * dp / visualDiff;
 
-		this.parent.axis.panGraphMinMax(m, this.bound_type);
+
+		this.parent.axis.panGraphMinMax(-graphDistance, this.bound_type);
 
 	}
 
@@ -195,9 +201,42 @@ RangeSlider.prototype._drawBB = function(context, toX, toY) {
 
 	// These parameters provide padding from the canvas boundaries to the
 	// computed mins and maxes. i.e. min is inset 20px from the extreme left.
+
 	this.minP = this.bb_side_padding,
 	this.maxP = toP(this.axis.max) - this.bb_side_padding;
 	this.midS = toS(this.saxis.max) - (this.bb_height / 2);
+
+};
+
+
+RangeSlider.prototype.graphToSlider = function(p) {
+
+	var diff = this.maxP - this.minP;
+
+	return this.minP + this.axis.interpolateGlobal(p) * diff;
+
+};
+
+
+RangeSlider.prototype.sliderToGraph = function(p) {
+
+	var diff = this.maxP - this.minP;
+
+	return this.axis.interpolateGlobalInverse((p - this.minP) / diff);
+
+};
+
+
+RangeSlider.prototype.canvasToSlider = function(p) {
+
+	return this.graphToSlider(this.axis.canvasToGraph(p));
+
+};
+
+
+RangeSlider.prototype.sliderToCanvas = function(p) {
+
+	return this.axis.graphToCanvas(this.sliderToGraph(p));
 
 };
 
@@ -209,10 +248,7 @@ RangeSlider.prototype._drawSpecialLines = function(context, toX, toY) {
 		var sl = this.specialLabels[i];
 
 
-		var diff = this.maxP - this.minP;
-
-		var p = this.minP + ((sl[0] - this.axis.minLimit) / 
-			(this.axis.maxLimit - this.axis.minLimit) * diff);
+		var p = this.graphToSlider(sl[0]);
 
 
 		context.beginPath();
@@ -259,13 +295,8 @@ RangeSlider.prototype._drawSpecialLines = function(context, toX, toY) {
 RangeSlider.prototype._recomputeStartEndP = function() {
 
 
-	var diff = this.maxP - this.minP;
-
-	this.startP = this.minP + ((this.axis.min - this.axis.minLimit) / 
-		(this.axis.maxLimit - this.axis.minLimit) * diff),
-
-	this.endP = this.minP + ((this.axis.max  - this.axis.minLimit) / 
-		(this.axis.maxLimit - this.axis.minLimit) * diff);
+	this.startP = this.graphToSlider(this.axis.min);
+	this.endP = this.graphToSlider(this.axis.max);
 
 
 	// Circles should not overlap
@@ -380,6 +411,10 @@ RangeSlider.prototype.ondrag = function(x, y) {
 		} else {
 			var dp = y - this.prevDragY;
 		}
+
+
+		// Revise here
+		// Consider updating both corner draggables
 
 
 		var visualDiff = this.maxP - this.minP,

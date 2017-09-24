@@ -70,7 +70,6 @@ class Graph {
 
 		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-
 		this.reference.draw(context, toX, toY);
 
 		this.xAxisRange.draw(context, toX, toY);
@@ -114,10 +113,10 @@ class Graph {
 		this.needsUpdate = true;
 	}
 
-	pan(diffX, diffY) {
+	pan(diffX, diffY, posX, posY) {
 
-		this.xAxis.panCanvas(diffX);
-		this.yAxis.panCanvas(diffY);
+		this.xAxis.panCanvas(diffX, posX);
+		this.yAxis.panCanvas(diffY, posY);
 
 		this.needsUpdate = true;
 	}

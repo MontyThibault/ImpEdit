@@ -58,24 +58,10 @@ function Audio() {
 	});
 
 
+
 	this.convolver = this.audioContext.createConvolver();
+	this.convolver.buffer = this.audioContext.createBuffer(1, 96000, this.audioContext.sampleRate);
 
-	// Dirac-Delta 
-	this.convolver.buffer = this.audioContext.createBuffer(2, 10000, this.audioContext.sampleRate);
-	
-	var arr = new Float32Array(this.convolver.buffer.length);
-	
-
-	for(var channel = 0; channel < this.convolver.buffer.numberOfChannels; channel++) {
-
-		for(var i = 0; i < this.convolver.buffer.length; i++) {
-
-			arr[i] = Math.random() * 2 - 1;
-
-		}
-
-		this.convolver.buffer.copyToChannel(arr, channel, 0);
-	}
 
 	this.convolver.loop = false;
 	this.convolver.normalize = true;
@@ -90,26 +76,51 @@ function Audio() {
 }
 
 
+Audio.prototype.update_convolver = function(buffer) {
+
+	// Simply this.convolver.buffer.copyToChannel(this.convolutionBufferArray, 0, 0);
+	// does not work for some reason. 
+
+	var convlutionBuffer = this.convolver.buffer;
+
+	convlutionBuffer.copyToChannel(buffer, 0, 0);
+
+	this.convolver.buffer = convlutionBuffer;
+
+};
+
 
 Audio.prototype.convolve_enable = function() {
+
 	this.convolve = true;
 	this.reconnect();
+
 };
+
 
 Audio.prototype.convolve_disable = function() {
+
 	this.convolve = false;
 	this.reconnect();
+
 };
+
 
 Audio.prototype.fft_enable = function() {
+
 	this.fft = true;
 	this.reconnect();
+
 };
 
+
 Audio.prototype.fft_disable = function() {
+
 	this.fft = false;
 	this.reconnect();
+
 };
+
 
 Audio.prototype.reconnect = function() {
 

@@ -12,6 +12,10 @@ class BufferLine {
 
 		context.beginPath();
 
+		context.strokeStyle = '#CC0000';
+		context.setLineDash([10, 3, 2, 3]);
+
+
 		var sampleStep = 1 / this.samplerate;
 		var pixelsPerSample = toX(sampleStep) - toX(0);
 		var samplesPerPixel = 1 / pixelsPerSample;
@@ -74,6 +78,7 @@ class BufferLine {
 
 
 		context.stroke();
+		context.setLineDash([]);
 
 	}
 

@@ -10,14 +10,14 @@ class IRGraph extends Graph {
 
 		super(canvas);
 
-		this.xAxis = new Axis(true, -5, 5, function() { return canvas.width; });
-		this.yAxis = new Axis(false, -5, 5, function() { return canvas.height; });
+		this.xAxis = new Axis(true, -1, 2, function() { return canvas.width; });
+		this.yAxis = new Axis(false, -1.5, 1.5, function() { return canvas.height; });
 
 		this.initAxes(this.xAxis, this.yAxis);
 
 
 		this.reference.xRef.specialLabels.push([0, 'Y (Waveform)', '#0000FF']);
-		this.reference.xRef.specialLabels.push([5, 'END', '#00CC00', [10, 3, 2, 3]]);
+		this.reference.xRef.specialLabels.push([1, 'END', '#00CC00', [10, 3, 2, 3]]);
 		this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
 
 		this.lineeditor = new LineEditor(this);
@@ -30,12 +30,16 @@ class IRGraph extends Graph {
 
 	_drawElements(context, toX, toY) {
 
-		super._drawElements(context, toX, toY);
+		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+		this.reference.draw(context, toX, toY);
 
 		this.lineeditor.draw(context, toX, toY);
 
-
 		this.vizline.draw(context, toX, toY);
+
+		this.xAxisRange.draw(context, toX, toY);
+		this.yAxisRange.draw(context, toX, toY);
 
 	}
 

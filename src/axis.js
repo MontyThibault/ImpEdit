@@ -25,8 +25,8 @@ class Axis {
 		this.max = max;
 
 		// Absolute boundaries
-		this.minLimit = -1e2;
-		this.maxLimit = 1e2;
+		this.minLimit = min;
+		this.maxLimit = max;
 
 
 		// returns canvas.width/canvas.height
@@ -39,6 +39,27 @@ class Axis {
 
 		this.min = (this.min > this.minLimit) ? this.min : this.minLimit;
 		this.max = (this.max < this.maxLimit) ? this.max : this.maxLimit;
+
+	}
+
+
+	_fixedWidthLimits() {
+
+		if(this.min < this.minLimit) {
+
+			var diff = this.minLimit - this.min;
+
+			this.min += diff;
+			this.max += diff;
+
+		} else if(this.max > this.maxLimit) {
+
+			var diff = this.max - this.maxLimit;
+
+			this.min -= diff;
+			this.max -= diff;
+
+		}
 
 	}
 
@@ -73,6 +94,48 @@ class Axis {
 	}
 
 
+
+	// Given graph coord, returns numeric value between zero and one for visualization.
+
+	interpolate(p) {
+
+		return this.graphToCanvas(p) / this.get_full_extent();
+
+	}
+
+
+	inverseInterpolate(p) {
+
+		return this.canvasToGraph(p * this.get_full_extent());
+
+	}
+
+
+
+	// Above, but in terms of maxLimit and minLimit
+
+	interpolateGlobal(p) {
+
+		return (this.graphToCanvas(p) - this.graphToCanvas(this.minLimit)) 
+		/ (this.graphToCanvas(this.maxLimit) - this.graphToCanvas(this.minLimit)) 
+
+
+	}
+
+
+	inverseInterpolateGlobal(p) {
+
+		return this.canvasToGraph(
+
+			(p * (this.graphToCanvas(this.maxLimit) - this.graphToCanvas(this.minLimit)))
+			+ this.graphToCanvas(this.minLimit)
+
+			);
+
+	}
+
+
+
 	zoomIn() {
 
 		var min = this.min * 0.9 + this.max * 0.1;
@@ -99,7 +162,7 @@ class Axis {
 	}
 
 
-	panCanvas(diff) {
+	panCanvas(diff, pos) {
 
 		var offset = this.graphToCanvas(this.min);
 
@@ -112,18 +175,10 @@ class Axis {
 
 	panGraph(diff) {
 
-		if(this.min - diff < this.minLimit || 
-			this.max - diff > this.maxLimit) {
-
-			// Boundary border
-			return;
-
-		}
-
 		this.min -= diff;
 		this.max -= diff;
 
-		this._limits();
+		this._fixedWidthLimits();
 
 	}
 
@@ -132,26 +187,30 @@ class Axis {
 
 		if(bound_type === 'min') {
 
-			if(this.min - diff < this.minLimit) {
+			// if(this.min - diff < this.minLimit) {
 
-				return;
+			// 	return;
 
-			}
+			// }
 
 			this.min -= diff;
 
 
+
+
 		} else if(bound_type === 'max') {
 
-			if(this.max - diff > this.maxLimit) {
+			// if(this.max - diff > this.maxLimit) {
 
-				return;
+			// 	return;
 
-			}
+			// }
 
 			this.max -= diff;
 
 		}
+
+		this._limits();
 
 	}
 
