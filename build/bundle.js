@@ -810,7 +810,7 @@ class Axis {
 
 
 module.exports = Axis;
-},{"./rangeslider.js":20}],6:[function(require,module,exports){
+},{"./rangeslider.js":23}],6:[function(require,module,exports){
 class BufferLine {
 
 	constructor(buffer, samplerate) {
@@ -948,7 +948,7 @@ class BufferSum extends Observable {
 
 
 module.exports = BufferSum;
-},{"./observable.js":17}],8:[function(require,module,exports){
+},{"./observable.js":18}],8:[function(require,module,exports){
 function ControlPoint(x, y, editor, graph) {
 
 	this.x = x;
@@ -1019,10 +1019,149 @@ ControlPoint.prototype.ondblclick = function() {
 
 module.exports = ControlPoint;
 },{}],9:[function(require,module,exports){
+module.exports = `
+
+
+#define buffer_length 1000
+#define samplerate 96000.0
+#define pi 3.1415926536
+
+#define TYPE_LINEAR 0
+#define TYPE_LOG 1
+#define TYPE_NEGATIVELOG 2
+
+
+
+uniform lowp int uAxisTypes[2];
+uniform lowp float uIR[buffer_length];
+
+varying lowp vec2 vVertexGraphPosition;
+
+
+lowp float computeLaplace(vec2 graphPosition) {
+
+
+	// Sum over terms f(t)e^st
+	// recall e^st = e^(re(s)t)(cos (imag s)t + i sin (imag s)t)
+
+	lowp float re_sum = 0.0;
+	lowp float im_sum = 0.0;
+	lowp float t;
+
+	for(int i = 0; i < buffer_length; i++) {
+
+		t = float(i) / samplerate;	
+
+		re_sum += exp(graphPosition.y * t) * cos(graphPosition.x * t * 2.0 * pi) * uIR[i];
+		im_sum += exp(graphPosition.y * t) * sin(graphPosition.x * t * 2.0 * pi) * uIR[i];
+
+	}
+
+	return re_sum;
+
+}
+
+
+lowp vec3 color_interp(lowp float x) {
+
+
+	lowp vec3 min = vec3(0.5, 0.3, 1.0);
+	lowp vec3 max = vec3(0.0, 1.0, 1.0);
+
+
+	if(x < 0.0) {
+
+		min.x += 0.5;
+		max.x += 0.5;
+
+		x = -x;
+
+	} 
+
+
+	x = log(x);
+
+
+	
+
+	lowp float minX = -3.0;
+	lowp float maxX = 8.0;
+
+
+	if(x <= minX) {
+		return vec3(1.0, 0.0, 1.0);
+	
+	}
+
+	if(x >= maxX) {
+		return vec3(1.0, 1.0, 1.0);
+	}
+
+	return min + (max - min) * ((x - minX) / (maxX - minX));
+
+}
+
+
+lowp vec3 hsv2rgb(lowp vec3 c) {
+
+	lowp vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+	lowp vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+	return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+
+}
+
+
+
+void main() {
+
+
+	lowp vec2 vgp = vVertexGraphPosition;
+
+
+	if(uAxisTypes[0] == TYPE_LOG) {
+
+		vgp.x = exp(vgp.x);
+
+	}
+
+	if(uAxisTypes[0] == TYPE_NEGATIVELOG) {
+
+		vgp.x = -exp(vgp.x);
+
+	}
+
+	if(uAxisTypes[1] == TYPE_LOG) {
+
+		vgp.y = exp(vgp.y);
+
+	}
+
+	if(uAxisTypes[1] == TYPE_NEGATIVELOG) {
+
+		vgp.y = -exp(vgp.y);
+
+	}
+
+
+	lowp float laplace = computeLaplace(vgp);
+
+	gl_FragColor = vec4(hsv2rgb(color_interp(laplace)), 1.0);
+
+}
+
+
+`;
+
+},{}],10:[function(require,module,exports){
 var Graph = require('./graph.js');
 var HzEditor = require('./hzeditor.js');
 var LogAxis = require('./logaxis.js');
 var Axis = require('./axis.js');
+
+
+var vsSource = require('./vShaderGLSL.js');
+var fsSource = require('./fShaderGLSL.js');
+
 
 
 class FrequencyGraph extends Graph {
@@ -1038,9 +1177,7 @@ class FrequencyGraph extends Graph {
 
 		this.initAxes(this.xAxis, this.yAxis);
 
-
-		this.hzeditor = new HzEditor(this);
-
+		this.editor = null;
 
 
 		this.canvas3d = canvas3d;
@@ -1078,7 +1215,7 @@ class FrequencyGraph extends Graph {
 
 		this.reference.draw(context, toX, toY);
 
-		this.hzeditor.draw(context, toX, toY);
+		this.editor.draw(context, toX, toY);
 
 		this.xAxisRange.draw(context, toX, toY);
 		this.yAxisRange.draw(context, toX, toY);
@@ -1087,8 +1224,6 @@ class FrequencyGraph extends Graph {
 
 
 	_drawLaplace(toX, toY) {
-
-		// We need impulse response function eventually
 
 		// this.gl.clearColor(1.0, 0.0, 0.0, 1.0);
 		// this.gl.clear(this.gl.COLOR_BUFFER_BIT);
@@ -1194,178 +1329,6 @@ class FrequencyGraph extends Graph {
 	_initiateWebGL() {
 
 		this.gl.viewport(0, 0, this.canvas3d.width, this.canvas3d.height);
-
-
-		const vsSource = `
-
-			#define TYPE_LINEAR 0
-			#define TYPE_LOG 1
-			#define TYPE_NEGATIVELOG 2
-
-
-			uniform lowp int uAxisTypes[2];
-
-			attribute vec2 aVertexScreenPosition;
-			attribute vec2 aVertexGraphPosition;
-
-			varying lowp vec2 vVertexGraphPosition;
-
-
-			void main() {
-
-				gl_Position = vec4(aVertexScreenPosition, 0.0, 1.0);
-
-
-				vVertexGraphPosition = aVertexGraphPosition;
-
-				if((uAxisTypes[0] == TYPE_LOG) || (uAxisTypes[0] == TYPE_NEGATIVELOG)) {
-
-					vVertexGraphPosition.x = log(abs(vVertexGraphPosition.x));
-
-				}
-
-
-				if((uAxisTypes[1] == TYPE_LOG) || (uAxisTypes[1] == TYPE_NEGATIVELOG)) {
-
-					vVertexGraphPosition.y = log(abs(vVertexGraphPosition.y));
-
-				}
-
-			}			
-
-		`;
-
-
-		const fsSource = `
-
-			#define buffer_length 1000
-			#define samplerate 96000.0
-			#define pi 3.1415926536
-
-			#define TYPE_LINEAR 0
-			#define TYPE_LOG 1
-			#define TYPE_NEGATIVELOG 2
-
-
-
-			uniform lowp int uAxisTypes[2];
-			uniform lowp float uIR[buffer_length];
-
-			varying lowp vec2 vVertexGraphPosition;
-
-			
-			lowp float computeLaplace(vec2 graphPosition) {
-
-
-				// Sum over terms f(t)e^st
-				// recall e^st = e^(re(s)t)(cos (imag s)t + i sin (imag s)t)
-
-				lowp float re_sum = 0.0;
-				lowp float im_sum = 0.0;
-				lowp float t;
-
-				for(int i = 0; i < buffer_length; i++) {
-
-					t = float(i) / samplerate;	
-
-					re_sum += exp(graphPosition.y * t) * cos(graphPosition.x * t * 2.0 * pi) * uIR[i];
-					im_sum += exp(graphPosition.y * t) * sin(graphPosition.x * t * 2.0 * pi) * uIR[i];
-
-				}
-
-				return re_sum;
-
-			}
-
-			
-			lowp vec3 color_interp(lowp float x) {
-
-
-				lowp vec3 min = vec3(0.5, 0.3, 1.0);
-				lowp vec3 max = vec3(0.0, 1.0, 1.0);
-
-
-				if(x < 0.0) {
-
-					min.x += 0.5;
-					max.x += 0.5;
-
-					x = -x;
-
-				} 
-
-
-				x = log(x);
-
-
-				
-
-				lowp float minX = -3.0;
-				lowp float maxX = 8.0;
-
-
-				if(x <= minX) {
-					return vec3(1.0, 0.0, 1.0);
-				
-				}
-
-				if(x >= maxX) {
-					return vec3(1.0, 1.0, 1.0);
-				}
-
-				return min + (max - min) * ((x - minX) / (maxX - minX));
-
-			}
-
-
-			lowp vec3 hsv2rgb(lowp vec3 c) {
-			
-				lowp vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-				lowp vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-				return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-
-			}
-
-
-
-			void main() {
-
-
-				lowp vec2 vgp = vVertexGraphPosition;
-
-
-				if(uAxisTypes[0] == TYPE_LOG) {
-
-					vgp.x = exp(vgp.x);
-
-				}
-
-				if(uAxisTypes[0] == TYPE_NEGATIVELOG) {
-
-					vgp.x = -exp(vgp.x);
-
-				}
-
-				if(uAxisTypes[1] == TYPE_LOG) {
-
-					vgp.y = exp(vgp.y);
-
-				}
-
-				if(uAxisTypes[1] == TYPE_NEGATIVELOG) {
-
-					vgp.y = -exp(vgp.y);
-
-				}
-
-
-				lowp float laplace = computeLaplace(vgp);
-
-				gl_FragColor = vec4(hsv2rgb(color_interp(laplace)), 1.0);
-
-			}
-
-		`;
 
 
 		this._initShaderProgram(vsSource, fsSource);
@@ -1526,7 +1489,8 @@ class FrequencyGraph extends Graph {
 		var fromX = this.xAxis.canvasToGraph(x),
 			fromY = this.yAxis.canvasToGraph(y);
 
-		this.hzeditor.addControlPoint(fromX, fromY);
+
+		this.editor.parent.addControlPointEditor(fromX, fromY);
 
 	}
 
@@ -1536,7 +1500,7 @@ class FrequencyGraph extends Graph {
 
 module.exports = FrequencyGraph;
 
-},{"./axis.js":5,"./graph.js":10,"./hzeditor.js":11,"./logaxis.js":14}],10:[function(require,module,exports){
+},{"./axis.js":5,"./fShaderGLSL.js":9,"./graph.js":11,"./hzeditor.js":12,"./logaxis.js":15,"./vShaderGLSL.js":26}],11:[function(require,module,exports){
 var MouseControl = require('./mousecontrol.js');
 var ReferenceLines = require('./referencelines.js');
 var RangeSlider = require('./rangeslider.js');
@@ -1693,15 +1657,36 @@ class Graph {
 }
 
 module.exports = Graph;
-},{"./mousecontrol.js":16,"./rangeslider.js":20,"./referencelines.js":21}],11:[function(require,module,exports){
+},{"./mousecontrol.js":17,"./rangeslider.js":23,"./referencelines.js":24}],12:[function(require,module,exports){
 var PointEditor = require('./pointeditor.js');
+var OscillatorPoint = require('./oscillatorPoint.js');
 
 
 class HzEditor extends PointEditor {
 
-	constructor(graph) {
+	constructor(editorGraph, editor0Graph) {
 
-		super(graph);
+		super(null);
+
+
+		this.subEditor = new PointEditor(editorGraph);
+		this.subEditor0 = new PointEditor(editor0Graph);
+
+
+		this.subEditor.addObserver(this.notifyObservers.bind(this));
+		this.subEditor0.addObserver(this.notifyObservers.bind(this));
+
+
+		this.subEditor.defaultX = 1000; // Hz
+		this.subEditor.defaultY = -10; // Damping
+
+		this.subEditor0.defaultX = 0.5; // Phase (0 - 2pi)
+		this.subEditor0.defaultY = 0.5; // Amplitude
+
+		this.subEditor.parent = this;
+		this.subEditor0.parent = this;
+
+
 
 
 		this.buffer = new Float32Array(96000);
@@ -1712,6 +1697,96 @@ class HzEditor extends PointEditor {
 			this.toBuffer();
 
 		});
+
+
+
+
+		var old_f3 = this.subEditor.removeControlPoint;
+
+		var that = this;
+		this.subEditor.removeControlPoint = function(o) {
+
+			that.removeControlPoint(o.parent);
+
+		};
+
+
+		var old_f4 = this.subEditor0.removeControlPoint;
+
+		this.subEditor0.removeControlPoint = function(o) {
+
+			that.removeControlPoint(o.parent);
+
+		};
+
+	}
+
+
+	_addControlPointNoUpdate(cp1, cp2) {
+
+		var op = new OscillatorPoint(cp1, cp2);
+
+		this.controlpoints.push(op);
+
+	}
+
+
+	addControlPoint(x, y, x0, y0) {
+
+		var cp1 = this.subEditor._addControlPointNoUpdate(x, y),
+			cp2 = this.subEditor0._addControlPointNoUpdate(x0, y0);
+
+
+		this._addControlPointNoUpdate(cp1, cp2);
+
+		this.notifyObservers();
+
+	}
+
+
+	addControlPointEditor(x, y) {
+
+		var cp1 = this.subEditor._addControlPointNoUpdate(x, y),
+			cp2 = this.subEditor0._addControlPointNoUpdate();
+
+		this._addControlPointNoUpdate(cp1, cp2);
+
+		this.notifyObservers();
+
+	}
+
+
+	addControlPointEditor0(x, y) {
+
+		var cp1 = this.subEditor._addControlPointNoUpdate(),
+			cp2 = this.subEditor0._addControlPointNoUpdate(x, y);
+
+		this._addControlPointNoUpdate(cp1, cp2);
+
+		this.notifyObservers();
+
+	}
+
+
+	_removeControlPointNoUpdate(o) {
+
+		var i = this.controlpoints.indexOf(o);
+
+		if(i > -1) {
+			this.controlpoints.splice(i, 1);
+		}
+
+	}
+
+
+	removeControlPoint(o) {
+
+		this.subEditor._removeControlPointNoUpdate(o.cp);
+		this.subEditor0._removeControlPointNoUpdate(o.cp0);
+
+		this._removeControlPointNoUpdate(o);
+
+		this.notifyObservers();
 
 	}
 
@@ -1730,9 +1805,9 @@ class HzEditor extends PointEditor {
 
 				var t = j / this.samplerate;
 
-				this.buffer[j] += Math.cos(cp.x * t * 2 * Math.PI) * Math.exp(cp.y * t);
 
-				// Imaginary: += Math.sin(cp.x * t * 2 * Math.PI) * Math.exp(cp.y * t);
+				this.buffer[j] += cp.reAtTime(t);
+
 
 			}
 
@@ -1744,7 +1819,7 @@ class HzEditor extends PointEditor {
 
 
 module.exports = HzEditor;
-},{"./pointeditor.js":18}],12:[function(require,module,exports){
+},{"./oscillatorPoint.js":20,"./pointeditor.js":21}],13:[function(require,module,exports){
 var Graph = require('./graph.js');
 var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
@@ -1767,8 +1842,8 @@ class IRGraph extends Graph {
 		this.reference.xRef.specialLabels.push([1, 'END', '#00CC00', [10, 3, 2, 3]]);
 		this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
 
-		this.lineeditor = new LineEditor(this);
-		this.lineeditor.addControlPoint(0, 0);
+		this.editor = new LineEditor(this);
+		this.editor.addControlPoint(0, 0);
 
 		this.vizline = new BufferLine(this.vizIR, 96000);
 
@@ -1781,7 +1856,7 @@ class IRGraph extends Graph {
 
 		this.reference.draw(context, toX, toY);
 
-		this.lineeditor.draw(context, toX, toY);
+		this.editor.draw(context, toX, toY);
 
 		this.vizline.draw(context, toX, toY);
 
@@ -1796,15 +1871,15 @@ class IRGraph extends Graph {
 		var fromX = this.xAxis.canvasToGraph(x),
 			fromY = this.yAxis.canvasToGraph(y);
 
-		this.lineeditor.addControlPoint(fromX, fromY);
+		this.editor.addControlPoint(fromX, fromY);
 	}
 
 
-	getIR(buffer, samplerate) {
+	// getIR(buffer, samplerate) {
 
-		this.lineeditor.toBuffer(buffer, samplerate);
+	// 	this.lineeditor.toBuffer(buffer, samplerate);
 
-	}
+	// }
 
 
 	setVizIR(buffer) {
@@ -1818,7 +1893,7 @@ class IRGraph extends Graph {
 
 
 module.exports = IRGraph;
-},{"./axis.js":5,"./bufferline.js":6,"./graph.js":10,"./lineeditor.js":13}],13:[function(require,module,exports){
+},{"./axis.js":5,"./bufferline.js":6,"./graph.js":11,"./lineeditor.js":14}],14:[function(require,module,exports){
 var PointEditor = require('./pointeditor.js');
 var PointLine = require('./pointline.js');
 
@@ -1968,7 +2043,7 @@ class LineEditor extends PointEditor {
 
 module.exports = LineEditor;
 
-},{"./pointeditor.js":18,"./pointline.js":19}],14:[function(require,module,exports){
+},{"./pointeditor.js":21,"./pointline.js":22}],15:[function(require,module,exports){
 var Axis = require('./axis.js');
 
 
@@ -2126,25 +2201,47 @@ class LogAxis extends Axis {
 
 
 module.exports = LogAxis;
-},{"./axis.js":5}],15:[function(require,module,exports){
+},{"./axis.js":5}],16:[function(require,module,exports){
 
 
 var IRGraph = require("./irgraph.js");
 var FrequencyGraph = require("./frequencygraph.js");
+var OffsetGraph = require('./offsetgraph.js');
+
 var Audio = require("./audio.js");
 var attachAudioDOM = require("./audioDOM.js");
 var BufferSum = require('./buffersum.js');
 
 
+
+
+
+var HzEditor = require('./hzeditor.js');
+
 var ir_canvas = document.getElementById('ir_graph');
 
-var hz_canvas2d = document.getElementById('hz_graph2d');
-var hz_canvas3d = document.getElementById('hz_graph3d');
-var hz_div = document.getElementById('hz_div');
+var fg_canvas2d = document.getElementById('fg_graph2d');
+var fg_canvas3d = document.getElementById('fg_graph3d');
+var fg_div = document.getElementById('fg_div');
+
+var og_canvas = document.getElementById('og_graph');
 
 
 var ir = new IRGraph(ir_canvas);
-var hz = new FrequencyGraph(hz_canvas2d, hz_canvas3d);
+
+var fg = new FrequencyGraph(fg_canvas2d, fg_canvas3d);
+var og = new OffsetGraph(og_canvas);
+
+
+
+
+/////
+var hz_editor = new HzEditor(fg, og);
+
+fg.editor = hz_editor.subEditor;
+og.editor = hz_editor.subEditor0;
+/////
+
 
 
 window.onresize = function() {
@@ -2156,17 +2253,23 @@ window.onresize = function() {
 	ir.needsUpdate = true;
 
 
-	hz_canvas2d.width = window.innerWidth - 20;
-	hz_canvas2d.height = 500;
+	fg_canvas2d.width = window.innerWidth - 20;
+	fg_canvas2d.height = 500;
 
-	hz_canvas3d.width = window.innerWidth - 20;
-	hz_canvas3d.height = 500;
+	fg_canvas3d.width = window.innerWidth - 20;
+	fg_canvas3d.height = 500;
 
-	hz_div.style = 'height: 500px';
+	fg_div.style = 'height: 500px';
 
-	hz.needsUpdate = true;
+	fg.needsUpdate = true;
 
-	hz.gl.viewport(0, 0, hz_canvas3d.width, hz_canvas3d.height);
+	fg.gl.viewport(0, 0, fg_canvas3d.width, fg_canvas3d.height);
+
+
+	og_canvas.width = window.innerWidth - 20;
+	og_canvas.height = 500;
+
+	og.needsUpdate = true;
 
 
 	draw();
@@ -2177,10 +2280,10 @@ window.onresize = function() {
 
 
 
-var totalBuffer = new BufferSum(hz.hzeditor, ir.lineeditor);
+var totalBuffer = new BufferSum(hz_editor, ir.editor);
 
 ir.setVizIR(totalBuffer.buffer);
-hz.setVizIR(totalBuffer.buffer);
+fg.setVizIR(totalBuffer.buffer);
 
 
 //////////////////////////
@@ -2190,6 +2293,8 @@ var audio = new Audio();
 attachAudioDOM(audio);
 
 
+
+// Change debounce 
 
 function debounce(f, delay) {
   var timer = null;
@@ -2224,12 +2329,12 @@ function draw() {
 	requestAnimationFrame(draw);
 
 
-	ir.needsUpdate = hz.needsUpdate = ir.needsUpdate || hz.needsUpdate;
+	ir.needsUpdate = fg.needsUpdate = og.needsUpdate = ir.needsUpdate || fg.needsUpdate || og.needsUpdate;;
 
 
 	ir.draw();
-	hz.draw();
-
+	fg.draw();
+	og.draw();
 }
 
 window.onresize();
@@ -2241,7 +2346,7 @@ window.onresize();
 
 
 
-},{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./frequencygraph.js":9,"./irgraph.js":12}],16:[function(require,module,exports){
+},{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./frequencygraph.js":10,"./hzeditor.js":12,"./irgraph.js":13,"./offsetgraph.js":19}],17:[function(require,module,exports){
 
 function debounce(f, delay) {
   var timer = null;
@@ -2432,7 +2537,7 @@ MouseControl.prototype.onscroll = function(e) {
 
 
 module.exports = MouseControl; // Singleton
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 
 class Observable {
 
@@ -2475,7 +2580,91 @@ class Observable {
 
 
 module.exports = Observable;
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
+var Graph = require('./graph.js');
+var Axis = require('./axis.js');
+var LogAxis = require('./logaxis.js');
+
+
+class OffsetGraph extends Graph {
+
+	constructor(canvas) {
+
+		super(canvas);
+
+		this.xAxis = new Axis(true, 0, 2 * Math.PI, function() { return canvas.width; });
+		this.yAxis = new Axis(false, 0, 1, function() { return canvas.height; });
+
+		this.initAxes(this.xAxis, this.yAxis);
+
+
+		this.editor = null;
+
+	}
+
+
+	_drawElements(context, toX, toY) {
+
+		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+		this.reference.draw(context, toX, toY);
+
+		this.editor.draw(context, toX, toY);
+
+		this.xAxisRange.draw(context, toX, toY);
+		this.yAxisRange.draw(context, toX, toY);
+
+	}
+
+
+	addControlPoint(x, y) {
+
+		var fromX = this.xAxis.canvasToGraph(x),
+			fromY = this.yAxis.canvasToGraph(y);
+
+		this.editor.parent.addControlPointEditor0(fromX, fromY);
+	}
+
+
+}
+
+
+module.exports = OffsetGraph;
+},{"./axis.js":5,"./graph.js":11,"./logaxis.js":15}],20:[function(require,module,exports){
+var ControlPoint = require('./controlpoint.js');
+
+
+class OscillatorPoint {
+
+	constructor(cp, cp0) {
+
+		this.cp = cp;
+		this.cp0 = cp0;
+
+		cp.parent = this;
+		cp0.parent = this;
+
+
+	}
+
+
+	reAtTime(t) {
+
+		return Math.cos((this.cp.x * t * 2 * Math.PI) + this.cp0.x) * Math.exp(this.cp.y * t) * this.cp0.y;
+
+	}
+
+
+	imAtTime(t) {
+
+		return Math.sin((this.cp.x * t * 2 * Math.PI) + this.cp0.x) * Math.exp(this.cp.y * t) * this.cp0.y;
+
+	}
+
+}
+
+module.exports = OscillatorPoint;
+},{"./controlpoint.js":8}],21:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 var Observable = require('./observable.js');
 
@@ -2489,6 +2678,9 @@ class PointEditor extends Observable {
 		this.controlpoints = [];
 
 		this.graph = graph;
+
+		this.defaultX = 0;
+		this.defaultY = 0;
 
 	}
 
@@ -2506,19 +2698,35 @@ class PointEditor extends Observable {
 
 	_addControlPointNoUpdate(x, y) {
 
+		if(x === undefined) {
+
+			x = this.defaultX;
+
+		}
+
+		if(y === undefined) {
+
+			y = this.defaultY;
+
+		}
+
 		var cp = new ControlPoint(x, y, this, this.graph);
 
 		this.controlpoints.push(cp);
 		this.graph.mousecontrol.addObject(cp);
+
+		return cp;
 
 	}
 
 
 	addControlPoint(x, y) {
 
-		this._addControlPointNoUpdate(x, y);
+		var cp = this._addControlPointNoUpdate(x, y);
 
 		this.notifyObservers();
+
+		return cp;
 
 	}
 
@@ -2554,7 +2762,7 @@ class PointEditor extends Observable {
 
 
 module.exports = PointEditor;
-},{"./controlpoint.js":8,"./observable.js":17}],19:[function(require,module,exports){
+},{"./controlpoint.js":8,"./observable.js":18}],22:[function(require,module,exports){
 function PointLine() {
 
 	this.points = [];
@@ -2580,7 +2788,7 @@ PointLine.prototype.draw = function(context, toX, toY) {
 
 
 module.exports = PointLine;
-},{}],20:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 // Throughout this class, p refers to "principal" and s refers to
 // "secondary", as a generic version of x/y or y/x, depending on the orientation.
 
@@ -3148,7 +3356,7 @@ class RangeSlider {
 
 module.exports = RangeSlider;
 
-},{}],21:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 var ReferenceLinesAxis = require('./referencelinesaxis.js');
 
 
@@ -3265,7 +3473,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
 module.exports = ReferenceLines;
-},{"./referencelinesaxis.js":22}],22:[function(require,module,exports){
+},{"./referencelinesaxis.js":25}],25:[function(require,module,exports){
 
 
 function ReferenceLinesAxis(principal_axis, secondary_axis) {
@@ -3616,4 +3824,44 @@ ReferenceLinesAxis.prototype.drawSpecialLabels = function(context, toX, toY) {
 
 
 module.exports = ReferenceLinesAxis;
-},{}]},{},[15]);
+},{}],26:[function(require,module,exports){
+module.exports = `
+
+
+#define TYPE_LINEAR 0
+#define TYPE_LOG 1
+#define TYPE_NEGATIVELOG 2
+
+
+uniform lowp int uAxisTypes[2];
+
+attribute vec2 aVertexScreenPosition;
+attribute vec2 aVertexGraphPosition;
+
+varying lowp vec2 vVertexGraphPosition;
+
+
+void main() {
+
+	gl_Position = vec4(aVertexScreenPosition, 0.0, 1.0);
+
+
+	vVertexGraphPosition = aVertexGraphPosition;
+
+	if((uAxisTypes[0] == TYPE_LOG) || (uAxisTypes[0] == TYPE_NEGATIVELOG)) {
+
+		vVertexGraphPosition.x = log(abs(vVertexGraphPosition.x));
+
+	}
+
+
+	if((uAxisTypes[1] == TYPE_LOG) || (uAxisTypes[1] == TYPE_NEGATIVELOG)) {
+
+		vVertexGraphPosition.y = log(abs(vVertexGraphPosition.y));
+
+	}
+
+}			
+
+`;
+},{}]},{},[16]);

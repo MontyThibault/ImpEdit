@@ -20,8 +20,8 @@ class IRGraph extends Graph {
 		this.reference.xRef.specialLabels.push([1, 'END', '#00CC00', [10, 3, 2, 3]]);
 		this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
 
-		this.lineeditor = new LineEditor(this);
-		this.lineeditor.addControlPoint(0, 0);
+		this.editor = new LineEditor(this);
+		this.editor.addControlPoint(0, 0);
 
 		this.vizline = new BufferLine(this.vizIR, 96000);
 
@@ -34,7 +34,7 @@ class IRGraph extends Graph {
 
 		this.reference.draw(context, toX, toY);
 
-		this.lineeditor.draw(context, toX, toY);
+		this.editor.draw(context, toX, toY);
 
 		this.vizline.draw(context, toX, toY);
 
@@ -49,15 +49,15 @@ class IRGraph extends Graph {
 		var fromX = this.xAxis.canvasToGraph(x),
 			fromY = this.yAxis.canvasToGraph(y);
 
-		this.lineeditor.addControlPoint(fromX, fromY);
+		this.editor.addControlPoint(fromX, fromY);
 	}
 
 
-	getIR(buffer, samplerate) {
+	// getIR(buffer, samplerate) {
 
-		this.lineeditor.toBuffer(buffer, samplerate);
+	// 	this.lineeditor.toBuffer(buffer, samplerate);
 
-	}
+	// }
 
 
 	setVizIR(buffer) {

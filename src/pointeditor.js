@@ -12,6 +12,9 @@ class PointEditor extends Observable {
 
 		this.graph = graph;
 
+		this.defaultX = 0;
+		this.defaultY = 0;
+
 	}
 
 
@@ -28,19 +31,35 @@ class PointEditor extends Observable {
 
 	_addControlPointNoUpdate(x, y) {
 
+		if(x === undefined) {
+
+			x = this.defaultX;
+
+		}
+
+		if(y === undefined) {
+
+			y = this.defaultY;
+
+		}
+
 		var cp = new ControlPoint(x, y, this, this.graph);
 
 		this.controlpoints.push(cp);
 		this.graph.mousecontrol.addObject(cp);
+
+		return cp;
 
 	}
 
 
 	addControlPoint(x, y) {
 
-		this._addControlPointNoUpdate(x, y);
+		var cp = this._addControlPointNoUpdate(x, y);
 
 		this.notifyObservers();
+
+		return cp;
 
 	}
 

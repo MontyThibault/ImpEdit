@@ -1,11 +1,32 @@
 var PointEditor = require('./pointeditor.js');
+var OscillatorPoint = require('./oscillatorPoint.js');
 
 
 class HzEditor extends PointEditor {
 
-	constructor(graph) {
+	constructor(editorGraph, editor0Graph) {
 
-		super(graph);
+		super(null);
+
+
+		this.subEditor = new PointEditor(editorGraph);
+		this.subEditor0 = new PointEditor(editor0Graph);
+
+
+		this.subEditor.addObserver(this.notifyObservers.bind(this));
+		this.subEditor0.addObserver(this.notifyObservers.bind(this));
+
+
+		this.subEditor.defaultX = 1000; // Hz
+		this.subEditor.defaultY = -10; // Damping
+
+		this.subEditor0.defaultX = 0.5; // Phase (0 - 2pi)
+		this.subEditor0.defaultY = 0.5; // Amplitude
+
+		this.subEditor.parent = this;
+		this.subEditor0.parent = this;
+
+
 
 
 		this.buffer = new Float32Array(96000);
@@ -16,6 +37,96 @@ class HzEditor extends PointEditor {
 			this.toBuffer();
 
 		});
+
+
+
+
+		var old_f3 = this.subEditor.removeControlPoint;
+
+		var that = this;
+		this.subEditor.removeControlPoint = function(o) {
+
+			that.removeControlPoint(o.parent);
+
+		};
+
+
+		var old_f4 = this.subEditor0.removeControlPoint;
+
+		this.subEditor0.removeControlPoint = function(o) {
+
+			that.removeControlPoint(o.parent);
+
+		};
+
+	}
+
+
+	_addControlPointNoUpdate(cp1, cp2) {
+
+		var op = new OscillatorPoint(cp1, cp2);
+
+		this.controlpoints.push(op);
+
+	}
+
+
+	addControlPoint(x, y, x0, y0) {
+
+		var cp1 = this.subEditor._addControlPointNoUpdate(x, y),
+			cp2 = this.subEditor0._addControlPointNoUpdate(x0, y0);
+
+
+		this._addControlPointNoUpdate(cp1, cp2);
+
+		this.notifyObservers();
+
+	}
+
+
+	addControlPointEditor(x, y) {
+
+		var cp1 = this.subEditor._addControlPointNoUpdate(x, y),
+			cp2 = this.subEditor0._addControlPointNoUpdate();
+
+		this._addControlPointNoUpdate(cp1, cp2);
+
+		this.notifyObservers();
+
+	}
+
+
+	addControlPointEditor0(x, y) {
+
+		var cp1 = this.subEditor._addControlPointNoUpdate(),
+			cp2 = this.subEditor0._addControlPointNoUpdate(x, y);
+
+		this._addControlPointNoUpdate(cp1, cp2);
+
+		this.notifyObservers();
+
+	}
+
+
+	_removeControlPointNoUpdate(o) {
+
+		var i = this.controlpoints.indexOf(o);
+
+		if(i > -1) {
+			this.controlpoints.splice(i, 1);
+		}
+
+	}
+
+
+	removeControlPoint(o) {
+
+		this.subEditor._removeControlPointNoUpdate(o.cp);
+		this.subEditor0._removeControlPointNoUpdate(o.cp0);
+
+		this._removeControlPointNoUpdate(o);
+
+		this.notifyObservers();
 
 	}
 
@@ -34,9 +145,9 @@ class HzEditor extends PointEditor {
 
 				var t = j / this.samplerate;
 
-				this.buffer[j] += Math.cos(cp.x * t * 2 * Math.PI) * Math.exp(cp.y * t);
 
-				// Imaginary: += Math.sin(cp.x * t * 2 * Math.PI) * Math.exp(cp.y * t);
+				this.buffer[j] += cp.reAtTime(t);
+
 
 			}
 
