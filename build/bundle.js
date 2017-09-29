@@ -665,6 +665,9 @@ module.exports = function(audio) {
 	fft_enabled.checked = false;
 	fft_enabled.onclick();
 
+	gain_slider.value = 1;
+	gain_slider.oninput();
+
 
 };
 },{}],5:[function(require,module,exports){
