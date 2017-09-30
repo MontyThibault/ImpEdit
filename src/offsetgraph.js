@@ -5,14 +5,31 @@ var LogAxis = require('./logaxis.js');
 
 class OffsetGraph extends Graph {
 
-	constructor(canvas) {
+	constructor(onscreenCanvas) {
 
-		super(canvas);
+		super(onscreenCanvas);
 
-		this.xAxis = new Axis(true, 0, 2 * Math.PI, function() { return canvas.width; });
-		this.yAxis = new Axis(false, 0, 1, function() { return canvas.height; });
+		this.xAxis = new Axis(true, 0, 2 * Math.PI, function() { return this.canvas.width; }.bind(this));
+		this.yAxis = new Axis(false, 0, 1, function() { return this.canvas.height; }.bind(this));
 
 		this.initAxes(this.xAxis, this.yAxis);
+
+
+		this.reference.xRef.addSpecialLabel({
+
+			coord: 75,
+			coord_system: 'canvas',
+			text: 'Phase (\u03C6)'
+
+		});
+
+		this.reference.yRef.addSpecialLabel({
+
+			coord: 50,
+			coord_system: 'canvas',
+			text: 'Amp.'
+
+		});
 
 
 		this.editor = null;

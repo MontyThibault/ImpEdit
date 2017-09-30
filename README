@@ -1,33 +1,28 @@
 To do:
 
 
--> Performance improvements
--> Add auto-normalize
--> Add gain slider
+-> Add special labels & lines (for axes and titles)
 
--> Fixed special labels & lines (for axes and titles)
-
-
--> Fix clicking bug with FFT (didn't work first time...)
-
--> Implement axial scaling for oscillator phase and magnitude
 -> Graphical table to edit oscillator values
+
+
 
 
 -> Set up some sort of interactive interface screen, where you can choose a frequency, it sets the lowpass filter, then change sliders for damping, phase, amplitude at that frequency.
 
 
-	-> Frequency chosen at random
-	-> Set the lowpass to the frequency
 
-	-> Sliders to adjust:
-		-> Damping
-		-> Amplitude
-		-> Phase
+///////////////
+Weekend goals
 
 
+-> Delegate Laplace rendering to seperate webworker
 
 
--> Change buffer length in GLSL_frag shader (and performance updates)
-	-> Maybe webworker off-canvas rendering?
+-> Fix clicking bug with FFT (didn't work first time...)
 
+-> Implement axial scaling
+
+-> Variable buffer length
+
+-> Code review

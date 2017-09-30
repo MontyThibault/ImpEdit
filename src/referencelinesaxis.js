@@ -11,14 +11,38 @@ class ReferenceLinesAxis {
 		this.saxis = secondary_axis;
 
 		// How many small lines between large lines (recursive)
+		// For 10, we have 1, 10, 100, 1000... major scales.
 		this.line_multiples = 10;
 
 		// Increase this to see less frequent 
 		this.minimum_label_distance = 100; //px
 
-
-		// [[labelCoord, text, strokeStyle, <dashing> (optional)], ...]
 		this.specialLabels = [];
+
+	}
+
+
+	_specialLabelDefaults(sl) {
+
+		sl.coord = sl.coord || 0;
+		
+		sl.coord_system = sl.coord_system || 'graph'; // graph or canvas
+
+		sl.text = sl.text || ''; // No label if blank
+		
+		sl.strokeStyle = sl.strokeStyle || ''; 
+		
+		sl.dash = sl.dash || [];
+
+		return sl;
+
+	}
+
+
+	addSpecialLabel(sl) {
+
+		this.specialLabels.push(this._specialLabelDefaults(sl));
+
 	}
 
 
@@ -111,7 +135,52 @@ class ReferenceLinesAxis {
 	}
 
 
-	// Eliminate duplication in this method
+	_iterateIntervalOverAxisWithoutSLIntersection(interval, f) {
+
+
+		this._iterateIntervalOverAxis(interval, function(j) {
+
+			for(var i = 0; i < this.specialLabels.length; i++) {
+
+				var sl = this.specialLabels[i];
+
+
+				if(sl.strokeStyle === '') {
+
+					continue;
+
+				}
+
+
+
+				if(sl.coord_system === 'graph') {
+
+					var graphCoord = sl.coord;
+
+				} else if(sl.coord_system === 'canvas') {
+
+					var graphCoord = this.axis.canvasToGraph(sl.coord);
+
+				}
+
+
+				if(Math.abs(j - graphCoord) < 1e-10) {
+
+
+					// Stop iterating
+
+					return false;
+
+				}
+
+			}
+
+			f(j);
+
+		}.bind(this));
+
+	}
+
 
 	drawLinesAtScale(context, toX, toY, scale) {
 		
@@ -132,23 +201,12 @@ class ReferenceLinesAxis {
 			context.strokeStyle = color;
 
 
-			var that = this;
-			this._iterateIntervalOverAxis(interval, function(j) {
+			this._iterateIntervalOverAxisWithoutSLIntersection(interval, function(j) {
 
-				for(var i = 0; i < this.specialLabels.length; i++) {
+				this.drawLine(context, toX, toY, j);
 
-					if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
+			}.bind(this));
 
-						return false;
-
-					}
-
-				}
-
-
-				that.drawLine(context, toX, toY, j);
-
-			});
 
 			context.stroke();
 
@@ -159,19 +217,7 @@ class ReferenceLinesAxis {
 
 			var pixelThresh = 3;
 
-
-			var that = this;
-			this._iterateIntervalOverAxis(interval, function(j) {
-
-				for(var i = 0; i < this.specialLabels.length; i++) {
-
-					if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
-
-						return false;
-
-					}
-
-				}
+			this._iterateIntervalOverAxisWithoutSLIntersection(interval, function(j) {
 
 
 				if(Math.abs(this.axis.graphToCanvasInterval(j, interval)) < pixelThresh) {
@@ -193,12 +239,12 @@ class ReferenceLinesAxis {
 
 
 
-				that.drawLine(context, toX, toY, j);
+				this.drawLine(context, toX, toY, j);
 
 				context.stroke();
 
-			});
 
+			}.bind(this));
 
 		}
 
@@ -214,16 +260,33 @@ class ReferenceLinesAxis {
 			var sl = this.specialLabels[i];
 
 			context.beginPath();
-			context.strokeStyle = sl[2];
+			context.strokeStyle = sl.strokeStyle;
 
-			if(sl.length === 4) {
 
-				context.setLineDash(sl[3]);
+			context.setLineDash(sl.dash);
+
+
+
+			if(sl.coord_system === 'graph') {
+
+				this.drawLine(context, toX, toY, sl.coord);
+
+			} else if(sl.coord_system === 'canvas') {
+
+				var id = function(x) { return x; };
+
+				if(this.axis.orientation) {
+
+					this.drawLine(context, id, toY, sl.coord);
+
+				} else {
+
+					this.drawLine(context, toX, id, sl.coord);
+
+				}
+				
 
 			}
-
-
-			this.drawLine(context, toX, toY, sl[0]);
 
 
 			context.stroke();
@@ -234,13 +297,13 @@ class ReferenceLinesAxis {
 	}
 
 
-	drawLabel(context, toX, toY, offset, text, weight) {
+	drawLabel(context, toX, toY, offset, text, opacity) {
 
 		var centerX,
 			centerY;
 
 		var height = 14,
-			inset = 20;
+			inset = 22;
 
 		if(this.axis.orientation) {
 			centerX = toX(offset);
@@ -258,14 +321,14 @@ class ReferenceLinesAxis {
 
 		// var width = 40;
 
-		context.fillStyle = 'rgba(245, 245, 245, ' + weight + ')';
+		context.fillStyle = 'rgba(245, 245, 245, ' + opacity + ')';
 		context.fillRect(centerX - (width / 2), 
 			centerY - (height / 2), 
 			width, 
 			height);
 
 
-		context.fillStyle = 'rgba(0, 0, 0, ' + weight + ')';
+		context.fillStyle = 'rgba(0, 0, 0, ' + opacity + ')';
 		context.fillText(text, centerX, centerY);
 
 	}
@@ -275,7 +338,29 @@ class ReferenceLinesAxis {
 
 		for(var i = 0; i < this.specialLabels.length; i++) {
 
-			var d = this.axis.graphToCanvas(j) - this.axis.graphToCanvas(this.specialLabels[i][0]);
+			var sl = this.specialLabels[i];
+
+
+			if(sl.text === '') {
+
+				continue;
+
+			}
+
+
+
+			if(sl.coord_system === 'graph') {
+
+				var coord = this.axis.graphToCanvas(sl.coord);
+
+			} else if(sl.coord_system === 'canvas') {
+
+				var coord = sl.coord;
+
+			}
+
+
+			var d = this.axis.graphToCanvas(j) - coord;
 			
 			var intersectSpecialLabel = Math.abs(d) < this.minimum_label_distance;
 
@@ -323,9 +408,9 @@ class ReferenceLinesAxis {
 			}
 
 
-			var weight = Math.abs(d - that.minimum_label_distance) / 20;
+			var opacity = Math.abs(d - that.minimum_label_distance) / 20;
 
-			that.drawLabel(context, toX, toY, j, (Math.round(j * 1e10) / 1e10).toExponential(), weight);
+			that.drawLabel(context, toX, toY, j, (Math.round(j * 1e10) / 1e10).toExponential(), opacity);
 
 		});
 
@@ -337,7 +422,34 @@ class ReferenceLinesAxis {
 		for(var i = 0; i < this.specialLabels.length; i++) {
 
 			var sl = this.specialLabels[i];
-			this.drawLabel(context, toX, toY, sl[0], sl[1], 1);
+
+
+			if(sl.text === '') {
+
+				continue;
+
+			}
+
+
+			if(sl.coord_system === 'canvas') {
+
+
+				var id = function(x) { return x; };
+
+				if(this.axis.orientation) {
+
+					toX = id;
+
+				} else {
+
+					toY = id;
+
+				}
+
+			}
+
+
+			this.drawLabel(context, toX, toY, sl.coord, sl.text, 1);
 
 		}
 

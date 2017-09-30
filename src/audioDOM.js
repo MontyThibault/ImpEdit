@@ -99,7 +99,7 @@ module.exports = function(audio) {
 
 	gain_slider.oninput = function() {
 
-		audio.gainNode.gain = this.value;
+		audio.gainNode.gain.value = Number(this.value);
 
 		gain_label.innerHTML = 'Gain: ' + this.value;
 

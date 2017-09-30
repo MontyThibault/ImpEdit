@@ -163,6 +163,7 @@ class Audio {
 
 		this.source.disconnect();
 		this.fft_processor.disconnect();
+		this.gainNode.disconnect();
 		this.convolver.disconnect();
 
 

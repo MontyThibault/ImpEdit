@@ -493,6 +493,7 @@ class Audio {
 
 		this.source.disconnect();
 		this.fft_processor.disconnect();
+		this.gainNode.disconnect();
 		this.convolver.disconnect();
 
 
@@ -631,7 +632,7 @@ module.exports = function(audio) {
 
 	gain_slider.oninput = function() {
 
-		audio.gainNode.gain = this.value;
+		audio.gainNode.gain.value = Number(this.value);
 
 		gain_label.innerHTML = 'Gain: ' + this.value;
 
@@ -1287,21 +1288,40 @@ var fsSource = require('./fShaderGLSL.js');
 class FrequencyGraph extends Graph {
 
 
-	constructor(canvas2d, canvas3d) {
+	constructor(onscreen2dCanvas, onscreen3dCanvas) {
 
-		super(canvas2d);
+		super(onscreen2dCanvas);
+
+		this.onscreen3dCanvas = onscreen3dCanvas;
+		this.onscreen3dContext = onscreen3dCanvas.getContext('2d');
 
 		
-		this.xAxis = new LogAxis(true, 5, 10000, function() { return canvas2d.width; });
-		this.yAxis = new LogAxis(false, -1000, -1, function() { return canvas2d.height; });
+		this.xAxis = new LogAxis(true, 5, 10000, function() { return this.canvas.width; }.bind(this));
+		this.yAxis = new LogAxis(false, -1000, -1, function() { return this.canvas.height; }.bind(this));
 
 		this.initAxes(this.xAxis, this.yAxis);
 
+		this.reference.xRef.addSpecialLabel({
+
+			coord: 75,
+			coord_system: 'canvas',
+			text: 'F (Hz) (Log)',
+
+		});
+
+		this.reference.yRef.addSpecialLabel({
+
+			coord: 50,
+			coord_system: 'canvas',
+			text: '\u03bb (Log)',
+
+		});
+
+
 		this.editor = null;
 
-
-		this.canvas3d = canvas3d;
-		this.gl = canvas3d.getContext('webgl', {
+		this.canvas3d = document.createElement('canvas');
+		this.gl = this.canvas3d.getContext('webgl', {
 			antialias: true
 		});
 
@@ -1312,8 +1332,6 @@ class FrequencyGraph extends Graph {
 		}
 
 
-		this.laplaceNeedsUpdate = true;
-
 		this._initiateWebGL();
 
 	}
@@ -1321,15 +1339,7 @@ class FrequencyGraph extends Graph {
 
 	_drawElements(context, toX, toY) {
 
-		this.laplaceNeedsUpdate = this.needsUpdate;
-
-
-		if(this.laplaceNeedsUpdate) {
-
-			this._drawLaplace(toX, toY);
-			this.laplaceNeedsUpdate = false;
-
-		}
+		this._drawLaplace(toX, toY);
 
 		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -1339,6 +1349,29 @@ class FrequencyGraph extends Graph {
 
 		this.xAxisRange.draw(context, toX, toY);
 		this.yAxisRange.draw(context, toX, toY);
+
+	}
+
+
+	copyToCanvas() {
+
+		super.copyToCanvas();
+
+		this.onscreen3dContext.clearRect(0, 0, this.onscreen3dCanvas.width, this.onscreen3dCanvas.height);
+		this.onscreen3dContext.drawImage(this.canvas3d, 0, 0, this.canvas3d.width, this.canvas3d.height);
+
+	}
+
+
+	setWidthHeight(w, h) {
+
+		super.setWidthHeight(w, h);
+
+		this.canvas3d.width = w;
+		this.canvas3d.height = h;
+
+		this.gl.viewport(0, 0, w, h);
+
 
 	}
 
@@ -1655,19 +1688,20 @@ function debounce(f, delay) {
 
 class Graph {
 	
-	constructor(canvas, xAxis, yAxis) {
+	constructor(onscreenCanvas) {
 
-		this.canvas = canvas;
-		this.context = canvas.getContext('2d');
+		this.canvas = document.createElement('canvas');
+		this.context = this.canvas.getContext('2d');
+
+		this.onscreenCanvas = onscreenCanvas;
+		this.onscreenContext = onscreenCanvas.getContext('2d');
 
 		this.mousecontrol = new MouseControl(this);
-		this.mouseBindings();
-
 
 		this.vizIR = [];
 
-
 		this.needsUpdate = true;
+
 	}
 
 
@@ -1703,6 +1737,7 @@ class Graph {
 
 	draw() {
 
+
 		if(!this.needsUpdate) {
 			return;
 		}
@@ -1716,9 +1751,28 @@ class Graph {
 
 
 		this._drawElements(this.context, toX, toY);
-
+		this.copyToCanvas();
 
 		this.needsUpdate = false;
+
+	}
+
+
+	copyToCanvas() {
+
+		this.onscreenContext.clearRect(0, 0, this.onscreenCanvas.width, this.onscreenCanvas.height);
+		this.onscreenContext.drawImage(this.canvas, 0, 0, this.canvas.width, this.canvas.height);
+
+	}
+
+
+	setWidthHeight(w, h) {
+
+		this.canvas.width = w;
+		this.canvas.height = h;
+
+		this.needsUpdate = true;
+
 	}
 
 
@@ -1751,11 +1805,11 @@ class Graph {
 	}
 
 
-	mouseBindings() {
+	mouseBindings(canvas) {
 
-		this.canvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
-		this.canvas.ondblclick = pdsc(this.mousecontrol, this.mousecontrol.ondblclick);
-		this.canvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
+		canvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
+		canvas.ondblclick = pdsc(this.mousecontrol, this.mousecontrol.ondblclick);
+		canvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
 
 
 		var that = this;
@@ -1948,19 +2002,41 @@ var BufferLine = require('./bufferline.js');
 
 class IRGraph extends Graph {
 
-	constructor(canvas) {
+	constructor(onscreenCanvas) {
 
-		super(canvas);
+		super(onscreenCanvas);
 
-		this.xAxis = new Axis(true, -1, 2, function() { return canvas.width; });
-		this.yAxis = new Axis(false, 1.5, -1.5, function() { return canvas.height; });
+		this.xAxis = new Axis(true, -1, 2, function() { return this.canvas.width; }.bind(this));
+		this.yAxis = new Axis(false, 1.5, -1.5, function() { return this.canvas.height; }.bind(this));
 
 		this.initAxes(this.xAxis, this.yAxis);
 
 
-		this.reference.xRef.specialLabels.push([0, 'Y (Waveform)', '#0000FF']);
-		this.reference.xRef.specialLabels.push([1, 'END', '#00CC00', [10, 3, 2, 3]]);
-		this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
+		this.reference.xRef.addSpecialLabel({
+
+			coord: 0,
+			text: 'Y (Waveform)',
+			strokeStyle: '#0000FF'
+
+		});
+
+		this.reference.xRef.addSpecialLabel({
+
+			coord: 1,
+			text: 'END',
+			strokeStyle: '#00CC00',
+			dash: [10, 3, 2, 3]
+
+		});
+
+		this.reference.yRef.addSpecialLabel({
+
+			coord: 0,
+			text: 'X (s)',
+			strokeStyle: '#0000FF'
+
+		});
+
 
 		this.editor = new LineEditor(this);
 		this.editor.addControlPoint(0, 0);
@@ -2339,61 +2415,57 @@ var BufferSum = require('./buffersum.js');
 var HzEditor = require('./hzeditor.js');
 
 var ir_canvas = document.getElementById('ir_graph');
-
 var fg_canvas2d = document.getElementById('fg_graph2d');
 var fg_canvas3d = document.getElementById('fg_graph3d');
 var fg_div = document.getElementById('fg_div');
-
 var og_canvas = document.getElementById('og_graph');
 
 
-var ir = new IRGraph(ir_canvas);
 
+
+var ir = new IRGraph(ir_canvas);
 var fg = new FrequencyGraph(fg_canvas2d, fg_canvas3d);
 var og = new OffsetGraph(og_canvas);
 
 
-
-
-/////
 var hz_editor = new HzEditor(fg, og);
 
 fg.editor = hz_editor.subEditor;
 og.editor = hz_editor.subEditor0;
-/////
+
+
+ir.mouseBindings(ir_canvas);
+fg.mouseBindings(fg_canvas2d);
+og.mouseBindings(og_canvas);
 
 
 
 window.onresize = function() {
 
 
-	var height = 410;
+	var height = 410,
+		width = $(window).width(),
+		halfwidth = $(window).width() / 2;
 
 
-	ir_canvas.width = window.innerWidth;
-	ir_canvas.height = 410;
+	ir.setWidthHeight(width, height);
+	fg.setWidthHeight(halfwidth, height);
+	og.setWidthHeight(halfwidth, height);
 
+	fg_div.style = 'height: 410px; width: ' + halfwidth + 'px;';
 
-	ir.needsUpdate = true;
+	ir_canvas.width = width;
+	ir_canvas.height = height;
 
+	fg_canvas2d.width = halfwidth;
+	fg_canvas2d.height = height;
 
-	fg_canvas2d.width = window.innerWidth / 2;
-	fg_canvas2d.height = 410;
+	fg_canvas3d.width = halfwidth;
+	fg_canvas3d.height = height;
 
-	fg_canvas3d.width = window.innerWidth / 2 - 20;
-	fg_canvas3d.height = 410;
-
-	fg_div.style = 'height: 410px; width: ' + fg_canvas2d.width + 'px;';
-
-	fg.needsUpdate = true;
-
-	fg.gl.viewport(0, 0, fg_canvas3d.width, fg_canvas3d.height);
-
-
-	og_canvas.width = window.innerWidth / 2 - 20;
-	og_canvas.height = 410;
-
-	og.needsUpdate = true;
+	og_canvas.width = halfwidth;
+	og_canvas.height = height;
+	
 
 
 	draw();
@@ -2418,8 +2490,6 @@ attachAudioDOM(audio);
 
 
 
-// Change debounce 
-
 function debounce(f, delay) {
   var timer = null;
 
@@ -2437,37 +2507,45 @@ function debounce(f, delay) {
 
 
 
-
 totalBuffer.addObserver(debounce(function() {
 
 	audio.updateConvolver(this.buffer);
 
-}, 1000));
+}, 200));
+
+
+totalBuffer.addObserver(function() {
+
+	ir.needsUpdate = true;
+	fg.needsUpdate = true;
+
+});
+
+
+hz_editor.addObserver(function() {
+
+	this.subEditor.graph.needsUpdate = true;
+	this.subEditor0.graph.needsUpdate = true;
+
+});
 
 
 
-var m = 0;
+
 
 function draw() {
 
 	requestAnimationFrame(draw);
 
 
-	ir.needsUpdate = fg.needsUpdate = og.needsUpdate = ir.needsUpdate || fg.needsUpdate || og.needsUpdate;;
-
-
 	ir.draw();
 	fg.draw();
 	og.draw();
+
+	
 }
 
 window.onresize();
-
-
-
-///////////////////////
-
-
 
 
 },{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./frequencygraph.js":10,"./hzeditor.js":12,"./irgraph.js":13,"./offsetgraph.js":19}],17:[function(require,module,exports){
@@ -2510,13 +2588,13 @@ class MouseControl {
 
 	_getX(e) {
 
-		return e.clientX - this.graph.canvas.getBoundingClientRect().left;
+		return e.clientX - this.graph.onscreenCanvas.getBoundingClientRect().left;
 
 	}
 
 	_getY(e) {
 
-		return e.clientY - this.graph.canvas.getBoundingClientRect().top;
+		return e.clientY - this.graph.onscreenCanvas.getBoundingClientRect().top;
 		
 	}
 
@@ -2716,14 +2794,31 @@ var LogAxis = require('./logaxis.js');
 
 class OffsetGraph extends Graph {
 
-	constructor(canvas) {
+	constructor(onscreenCanvas) {
 
-		super(canvas);
+		super(onscreenCanvas);
 
-		this.xAxis = new Axis(true, 0, 2 * Math.PI, function() { return canvas.width; });
-		this.yAxis = new Axis(false, 0, 1, function() { return canvas.height; });
+		this.xAxis = new Axis(true, 0, 2 * Math.PI, function() { return this.canvas.width; }.bind(this));
+		this.yAxis = new Axis(false, 0, 1, function() { return this.canvas.height; }.bind(this));
 
 		this.initAxes(this.xAxis, this.yAxis);
+
+
+		this.reference.xRef.addSpecialLabel({
+
+			coord: 75,
+			coord_system: 'canvas',
+			text: 'Phase (\u03C6)'
+
+		});
+
+		this.reference.yRef.addSpecialLabel({
+
+			coord: 50,
+			coord_system: 'canvas',
+			text: 'Amp.'
+
+		});
 
 
 		this.editor = null;
@@ -3626,14 +3721,38 @@ class ReferenceLinesAxis {
 		this.saxis = secondary_axis;
 
 		// How many small lines between large lines (recursive)
+		// For 10, we have 1, 10, 100, 1000... major scales.
 		this.line_multiples = 10;
 
 		// Increase this to see less frequent 
 		this.minimum_label_distance = 100; //px
 
-
-		// [[labelCoord, text, strokeStyle, <dashing> (optional)], ...]
 		this.specialLabels = [];
+
+	}
+
+
+	_specialLabelDefaults(sl) {
+
+		sl.coord = sl.coord || 0;
+		
+		sl.coord_system = sl.coord_system || 'graph'; // graph or canvas
+
+		sl.text = sl.text || ''; // No label if blank
+		
+		sl.strokeStyle = sl.strokeStyle || ''; 
+		
+		sl.dash = sl.dash || [];
+
+		return sl;
+
+	}
+
+
+	addSpecialLabel(sl) {
+
+		this.specialLabels.push(this._specialLabelDefaults(sl));
+
 	}
 
 
@@ -3726,7 +3845,52 @@ class ReferenceLinesAxis {
 	}
 
 
-	// Eliminate duplication in this method
+	_iterateIntervalOverAxisWithoutSLIntersection(interval, f) {
+
+
+		this._iterateIntervalOverAxis(interval, function(j) {
+
+			for(var i = 0; i < this.specialLabels.length; i++) {
+
+				var sl = this.specialLabels[i];
+
+
+				if(sl.strokeStyle === '') {
+
+					continue;
+
+				}
+
+
+
+				if(sl.coord_system === 'graph') {
+
+					var graphCoord = sl.coord;
+
+				} else if(sl.coord_system === 'canvas') {
+
+					var graphCoord = this.axis.canvasToGraph(sl.coord);
+
+				}
+
+
+				if(Math.abs(j - graphCoord) < 1e-10) {
+
+
+					// Stop iterating
+
+					return false;
+
+				}
+
+			}
+
+			f(j);
+
+		}.bind(this));
+
+	}
+
 
 	drawLinesAtScale(context, toX, toY, scale) {
 		
@@ -3747,23 +3911,12 @@ class ReferenceLinesAxis {
 			context.strokeStyle = color;
 
 
-			var that = this;
-			this._iterateIntervalOverAxis(interval, function(j) {
+			this._iterateIntervalOverAxisWithoutSLIntersection(interval, function(j) {
 
-				for(var i = 0; i < this.specialLabels.length; i++) {
+				this.drawLine(context, toX, toY, j);
 
-					if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
+			}.bind(this));
 
-						return false;
-
-					}
-
-				}
-
-
-				that.drawLine(context, toX, toY, j);
-
-			});
 
 			context.stroke();
 
@@ -3774,19 +3927,7 @@ class ReferenceLinesAxis {
 
 			var pixelThresh = 3;
 
-
-			var that = this;
-			this._iterateIntervalOverAxis(interval, function(j) {
-
-				for(var i = 0; i < this.specialLabels.length; i++) {
-
-					if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
-
-						return false;
-
-					}
-
-				}
+			this._iterateIntervalOverAxisWithoutSLIntersection(interval, function(j) {
 
 
 				if(Math.abs(this.axis.graphToCanvasInterval(j, interval)) < pixelThresh) {
@@ -3808,12 +3949,12 @@ class ReferenceLinesAxis {
 
 
 
-				that.drawLine(context, toX, toY, j);
+				this.drawLine(context, toX, toY, j);
 
 				context.stroke();
 
-			});
 
+			}.bind(this));
 
 		}
 
@@ -3829,16 +3970,33 @@ class ReferenceLinesAxis {
 			var sl = this.specialLabels[i];
 
 			context.beginPath();
-			context.strokeStyle = sl[2];
+			context.strokeStyle = sl.strokeStyle;
 
-			if(sl.length === 4) {
 
-				context.setLineDash(sl[3]);
+			context.setLineDash(sl.dash);
+
+
+
+			if(sl.coord_system === 'graph') {
+
+				this.drawLine(context, toX, toY, sl.coord);
+
+			} else if(sl.coord_system === 'canvas') {
+
+				var id = function(x) { return x; };
+
+				if(this.axis.orientation) {
+
+					this.drawLine(context, id, toY, sl.coord);
+
+				} else {
+
+					this.drawLine(context, toX, id, sl.coord);
+
+				}
+				
 
 			}
-
-
-			this.drawLine(context, toX, toY, sl[0]);
 
 
 			context.stroke();
@@ -3849,13 +4007,13 @@ class ReferenceLinesAxis {
 	}
 
 
-	drawLabel(context, toX, toY, offset, text, weight) {
+	drawLabel(context, toX, toY, offset, text, opacity) {
 
 		var centerX,
 			centerY;
 
 		var height = 14,
-			inset = 20;
+			inset = 22;
 
 		if(this.axis.orientation) {
 			centerX = toX(offset);
@@ -3873,14 +4031,14 @@ class ReferenceLinesAxis {
 
 		// var width = 40;
 
-		context.fillStyle = 'rgba(245, 245, 245, ' + weight + ')';
+		context.fillStyle = 'rgba(245, 245, 245, ' + opacity + ')';
 		context.fillRect(centerX - (width / 2), 
 			centerY - (height / 2), 
 			width, 
 			height);
 
 
-		context.fillStyle = 'rgba(0, 0, 0, ' + weight + ')';
+		context.fillStyle = 'rgba(0, 0, 0, ' + opacity + ')';
 		context.fillText(text, centerX, centerY);
 
 	}
@@ -3890,7 +4048,29 @@ class ReferenceLinesAxis {
 
 		for(var i = 0; i < this.specialLabels.length; i++) {
 
-			var d = this.axis.graphToCanvas(j) - this.axis.graphToCanvas(this.specialLabels[i][0]);
+			var sl = this.specialLabels[i];
+
+
+			if(sl.text === '') {
+
+				continue;
+
+			}
+
+
+
+			if(sl.coord_system === 'graph') {
+
+				var coord = this.axis.graphToCanvas(sl.coord);
+
+			} else if(sl.coord_system === 'canvas') {
+
+				var coord = sl.coord;
+
+			}
+
+
+			var d = this.axis.graphToCanvas(j) - coord;
 			
 			var intersectSpecialLabel = Math.abs(d) < this.minimum_label_distance;
 
@@ -3938,9 +4118,9 @@ class ReferenceLinesAxis {
 			}
 
 
-			var weight = Math.abs(d - that.minimum_label_distance) / 20;
+			var opacity = Math.abs(d - that.minimum_label_distance) / 20;
 
-			that.drawLabel(context, toX, toY, j, (Math.round(j * 1e10) / 1e10).toExponential(), weight);
+			that.drawLabel(context, toX, toY, j, (Math.round(j * 1e10) / 1e10).toExponential(), opacity);
 
 		});
 
@@ -3952,7 +4132,34 @@ class ReferenceLinesAxis {
 		for(var i = 0; i < this.specialLabels.length; i++) {
 
 			var sl = this.specialLabels[i];
-			this.drawLabel(context, toX, toY, sl[0], sl[1], 1);
+
+
+			if(sl.text === '') {
+
+				continue;
+
+			}
+
+
+			if(sl.coord_system === 'canvas') {
+
+
+				var id = function(x) { return x; };
+
+				if(this.axis.orientation) {
+
+					toX = id;
+
+				} else {
+
+					toY = id;
+
+				}
+
+			}
+
+
+			this.drawLabel(context, toX, toY, sl.coord, sl.text, 1);
 
 		}
 

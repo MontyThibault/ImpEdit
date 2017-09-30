@@ -12,21 +12,40 @@ var fsSource = require('./fShaderGLSL.js');
 class FrequencyGraph extends Graph {
 
 
-	constructor(canvas2d, canvas3d) {
+	constructor(onscreen2dCanvas, onscreen3dCanvas) {
 
-		super(canvas2d);
+		super(onscreen2dCanvas);
+
+		this.onscreen3dCanvas = onscreen3dCanvas;
+		this.onscreen3dContext = onscreen3dCanvas.getContext('2d');
 
 		
-		this.xAxis = new LogAxis(true, 5, 10000, function() { return canvas2d.width; });
-		this.yAxis = new LogAxis(false, -1000, -1, function() { return canvas2d.height; });
+		this.xAxis = new LogAxis(true, 5, 10000, function() { return this.canvas.width; }.bind(this));
+		this.yAxis = new LogAxis(false, -1000, -1, function() { return this.canvas.height; }.bind(this));
 
 		this.initAxes(this.xAxis, this.yAxis);
 
+		this.reference.xRef.addSpecialLabel({
+
+			coord: 75,
+			coord_system: 'canvas',
+			text: 'F (Hz) (Log)',
+
+		});
+
+		this.reference.yRef.addSpecialLabel({
+
+			coord: 50,
+			coord_system: 'canvas',
+			text: '\u03bb (Log)',
+
+		});
+
+
 		this.editor = null;
 
-
-		this.canvas3d = canvas3d;
-		this.gl = canvas3d.getContext('webgl', {
+		this.canvas3d = document.createElement('canvas');
+		this.gl = this.canvas3d.getContext('webgl', {
 			antialias: true
 		});
 
@@ -37,8 +56,6 @@ class FrequencyGraph extends Graph {
 		}
 
 
-		this.laplaceNeedsUpdate = true;
-
 		this._initiateWebGL();
 
 	}
@@ -46,15 +63,7 @@ class FrequencyGraph extends Graph {
 
 	_drawElements(context, toX, toY) {
 
-		this.laplaceNeedsUpdate = this.needsUpdate;
-
-
-		if(this.laplaceNeedsUpdate) {
-
-			this._drawLaplace(toX, toY);
-			this.laplaceNeedsUpdate = false;
-
-		}
+		this._drawLaplace(toX, toY);
 
 		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -64,6 +73,29 @@ class FrequencyGraph extends Graph {
 
 		this.xAxisRange.draw(context, toX, toY);
 		this.yAxisRange.draw(context, toX, toY);
+
+	}
+
+
+	copyToCanvas() {
+
+		super.copyToCanvas();
+
+		this.onscreen3dContext.clearRect(0, 0, this.onscreen3dCanvas.width, this.onscreen3dCanvas.height);
+		this.onscreen3dContext.drawImage(this.canvas3d, 0, 0, this.canvas3d.width, this.canvas3d.height);
+
+	}
+
+
+	setWidthHeight(w, h) {
+
+		super.setWidthHeight(w, h);
+
+		this.canvas3d.width = w;
+		this.canvas3d.height = h;
+
+		this.gl.viewport(0, 0, w, h);
+
 
 	}
 

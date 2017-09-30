@@ -37,13 +37,13 @@ class MouseControl {
 
 	_getX(e) {
 
-		return e.clientX - this.graph.canvas.getBoundingClientRect().left;
+		return e.clientX - this.graph.onscreenCanvas.getBoundingClientRect().left;
 
 	}
 
 	_getY(e) {
 
-		return e.clientY - this.graph.canvas.getBoundingClientRect().top;
+		return e.clientY - this.graph.onscreenCanvas.getBoundingClientRect().top;
 		
 	}
 

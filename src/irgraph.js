@@ -6,19 +6,41 @@ var BufferLine = require('./bufferline.js');
 
 class IRGraph extends Graph {
 
-	constructor(canvas) {
+	constructor(onscreenCanvas) {
 
-		super(canvas);
+		super(onscreenCanvas);
 
-		this.xAxis = new Axis(true, -1, 2, function() { return canvas.width; });
-		this.yAxis = new Axis(false, 1.5, -1.5, function() { return canvas.height; });
+		this.xAxis = new Axis(true, -1, 2, function() { return this.canvas.width; }.bind(this));
+		this.yAxis = new Axis(false, 1.5, -1.5, function() { return this.canvas.height; }.bind(this));
 
 		this.initAxes(this.xAxis, this.yAxis);
 
 
-		this.reference.xRef.specialLabels.push([0, 'Y (Waveform)', '#0000FF']);
-		this.reference.xRef.specialLabels.push([1, 'END', '#00CC00', [10, 3, 2, 3]]);
-		this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
+		this.reference.xRef.addSpecialLabel({
+
+			coord: 0,
+			text: 'Y (Waveform)',
+			strokeStyle: '#0000FF'
+
+		});
+
+		this.reference.xRef.addSpecialLabel({
+
+			coord: 1,
+			text: 'END',
+			strokeStyle: '#00CC00',
+			dash: [10, 3, 2, 3]
+
+		});
+
+		this.reference.yRef.addSpecialLabel({
+
+			coord: 0,
+			text: 'X (s)',
+			strokeStyle: '#0000FF'
+
+		});
+
 
 		this.editor = new LineEditor(this);
 		this.editor.addControlPoint(0, 0);
