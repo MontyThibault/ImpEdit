@@ -1,7 +1,5 @@
 To do:
 
-
-
 -> Set buffer to dirac-delta by default
 
 -> Add disable button
@@ -11,14 +9,6 @@ To do:
 
 -> Play pure tone button
 -> Increase controls width
-
-
--> Move GUI audio controls to dat.GUI window
-
-
-////////////////////////////////
-
-
 
 
 -> Delegate Laplace rendering to seperate webworker
