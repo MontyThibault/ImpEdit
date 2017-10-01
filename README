@@ -2,26 +2,27 @@ To do:
 
 
 
--> Graphical table to edit oscillator values
--> Set up some sort of interactive interface screen, where you can choose a frequency, it sets the lowpass filter, then change sliders for damping, phase, amplitude at that frequency.
+-> Set buffer to dirac-delta by default
 
-
-
--> dat.gui can help with saving
-
-
-///////////////
-Weekend goals
-
-
--> Delegate Laplace rendering to seperate webworker
-
+-> Add disable button
+-> Disable listeners button
 
 -> Fix clicking bug with FFT (didn't work first time...)
 
+-> Play pure tone button
+-> Increase controls width
+
+
+-> Move GUI audio controls to dat.GUI window
+
+
+////////////////////////////////
+
+
+
+
+-> Delegate Laplace rendering to seperate webworker
 -> Implement axial scaling
-
 -> Variable buffer length
-
 -> Code review
 	-> axis.orientationf can be used with bind()
