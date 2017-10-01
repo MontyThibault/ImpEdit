@@ -1077,6 +1077,13 @@ class ControlPoint {
 		this.graph = graph;
 
 		this.strokeColor;
+
+		this.activeColor = '#FF0000';
+		this.nonactiveColor = '#000000';
+
+		this.outline = false;
+
+
 		this.onactiveend();
 		
 	}
@@ -1084,12 +1091,29 @@ class ControlPoint {
 
 	draw(context, toX, toY) {
 	
+
+		if(this.outline) {
+
+			context.strokeStyle = '#FFFFFF';
+			context.lineWidth = 5;
+
+			context.beginPath();
+			context.arc(toX(this.x), toY(this.y), 10, 0, 2 * Math.PI);
+			context.stroke();
+
+			context.lineWidth = 3;
+
+		}
+
+
 		// Draw circle
 		context.strokeStyle = this.strokeColor;
 
 		context.beginPath();
 		context.arc(toX(this.x), toY(this.y), 10, 0, 2 * Math.PI);
 		context.stroke();
+
+		context.lineWidth = 1;
 
 	}
 
@@ -1117,14 +1141,14 @@ class ControlPoint {
 
 	onactivestart() {
 
-		this.strokeColor = '#FF0000';
+		this.strokeColor = this.activeColor;
 
 	}
 
 
 	onactiveend() {
 
-		this.strokeColor = '#000000';
+		this.strokeColor = this.nonactiveColor;
 
 	}
 
@@ -1643,7 +1667,7 @@ class FrequencyGraph extends Graph {
 			fromY = this.yAxis.canvasToGraph(y);
 
 
-		this.editor.parent.addControlPointEditor(fromX, fromY);
+		return this.editor.parent.addControlPointEditor(fromX, fromY);
 
 	}
 
@@ -1669,18 +1693,26 @@ function prevent_default_set_context(that, f) {
 pdsc = prevent_default_set_context;
 
 
-function debounce(f, delay) {
-  var timer = null;
-
+function throttle(fn, threshhold, scope) {
+  threshhold || (threshhold = 250);
+  var last,
+      deferTimer;
   return function () {
-    var context = this, 
-    	args = arguments;
+    var context = scope || this;
 
-    clearTimeout(timer);
-
-    timer = setTimeout(function () {
-      f.apply(context, args);
-    }, delay);
+    var now = +new Date,
+        args = arguments;
+    if (last && now < last + threshhold) {
+      // hold on to it
+      clearTimeout(deferTimer);
+      deferTimer = setTimeout(function () {
+        last = now;
+        fn.apply(context, args);
+      }, threshhold);
+    } else {
+      last = now;
+      fn.apply(context, args);
+    }
   };
 }
 
@@ -1805,6 +1837,16 @@ class Graph {
 	}
 
 
+	addControlPoint(x, y) {
+
+		var fromX = this.xAxis.canvasToGraph(x),
+			fromY = this.yAxis.canvasToGraph(y);
+
+		return this.editor.addControlPoint(fromX, fromY);
+		
+	}
+
+
 	mouseBindings(canvas) {
 
 		canvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
@@ -1814,7 +1856,7 @@ class Graph {
 
 		var that = this;
 		document.addEventListener('mousemove', 
-			debounce(pdsc(that.mousecontrol, that.mousecontrol.onmousemove), 1000 / 60));
+			throttle(pdsc(that.mousecontrol, that.mousecontrol.onmousemove), 1000 / 60));
 
 
 		document.addEventListener('mouseup', that.mousecontrol.onmouseup.bind(that.mousecontrol));
@@ -1902,6 +1944,22 @@ class HzEditor extends PointEditor {
 
 		this.controlpoints.push(op);
 
+		return op;
+
+	}
+
+
+	addControlPointDefault() {
+
+		var cp1 = this.subEditor._addControlPointNoUpdate(),
+			cp2 = this.subEditor0._addControlPointNoUpdate();
+
+		var op = this._addControlPointNoUpdate(cp1, cp2);
+
+		this.notifyObservers();
+
+		return op;
+
 	}
 
 
@@ -1911,9 +1969,11 @@ class HzEditor extends PointEditor {
 			cp2 = this.subEditor0._addControlPointNoUpdate(x0, y0);
 
 
-		this._addControlPointNoUpdate(cp1, cp2);
+		var op = this._addControlPointNoUpdate(cp1, cp2);
 
 		this.notifyObservers();
+
+		return op;
 
 	}
 
@@ -1925,7 +1985,11 @@ class HzEditor extends PointEditor {
 
 		this._addControlPointNoUpdate(cp1, cp2);
 
+		var op = this._addControlPointNoUpdate(cp1, cp2);
+
 		this.notifyObservers();
+
+		return op;
 
 	}
 
@@ -1935,9 +1999,11 @@ class HzEditor extends PointEditor {
 		var cp1 = this.subEditor._addControlPointNoUpdate(),
 			cp2 = this.subEditor0._addControlPointNoUpdate(x, y);
 
-		this._addControlPointNoUpdate(cp1, cp2);
+		var op = this._addControlPointNoUpdate(cp1, cp2);
 
 		this.notifyObservers();
+
+		return op;
 
 	}
 
@@ -2059,15 +2125,6 @@ class IRGraph extends Graph {
 		this.xAxisRange.draw(context, toX, toY);
 		this.yAxisRange.draw(context, toX, toY);
 
-	}
-
-
-	addControlPoint(x, y) {
-
-		var fromX = this.xAxis.canvasToGraph(x),
-			fromY = this.yAxis.canvasToGraph(y);
-
-		this.editor.addControlPoint(fromX, fromY);
 	}
 
 
@@ -2490,24 +2547,32 @@ attachAudioDOM(audio);
 
 
 
-function debounce(f, delay) {
-  var timer = null;
-
+function throttle(fn, threshhold, scope) {
+  threshhold || (threshhold = 250);
+  var last,
+      deferTimer;
   return function () {
-    var context = this, 
-    	args = arguments;
+    var context = scope || this;
 
-    clearTimeout(timer);
-
-    timer = setTimeout(function () {
-      f.apply(context, args);
-    }, delay);
+    var now = +new Date,
+        args = arguments;
+    if (last && now < last + threshhold) {
+      // hold on to it
+      clearTimeout(deferTimer);
+      deferTimer = setTimeout(function () {
+        last = now;
+        fn.apply(context, args);
+      }, threshhold);
+    } else {
+      last = now;
+      fn.apply(context, args);
+    }
   };
 }
 
 
 
-totalBuffer.addObserver(debounce(function() {
+totalBuffer.addObserver(throttle(function() {
 
 	audio.updateConvolver(this.buffer);
 
@@ -2545,28 +2610,138 @@ function draw() {
 	
 }
 
-window.onresize();
+
+window.onload = window.onresize;
+window.onfocus = window.onresize;
 
 
-},{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./frequencygraph.js":10,"./hzeditor.js":12,"./irgraph.js":13,"./offsetgraph.js":19}],17:[function(require,module,exports){
 
-function debounce(f, delay) {
-  var timer = null;
+////////////////////////
 
-  return function () {
-    var context = this, 
-    	args = arguments;
 
-    clearTimeout(timer);
+dat.GUI.prototype.removeFolder = function(name) {
 
-    timer = setTimeout(function () {
-      f.apply(context, args);
-    }, delay);
-  };
+  var folder = this.__folders[name];
+
+
+  if (!folder) {
+
+    return;
+
+  }
+
+  folder.close();
+
+  this.__ul.removeChild(folder.domElement.parentNode);
+  delete this.__folders[name];
+  this.onResize();
+
 }
 
 
+var gui = new dat.GUI();
 
+
+
+
+var i = 0;
+
+
+function addControlPointToGUI(op) {
+
+	var f = gui.addFolder('CP ' + i++);
+
+	var op = op || hz_editor.addControlPointDefault();
+	op.fname = f.name;
+
+	f.add(op.cp, 'x', fg.xAxis.minLimit, fg.xAxis.maxLimit).name('Frequency').listen();
+	f.add(op.cp, 'y', fg.yAxis.minLimit, fg.yAxis.maxLimit).name('Damping').listen();
+	f.add(op.cp0, 'x', og.xAxis.minLimit, og.xAxis.maxLimit).name('Phase').listen();
+	f.add(op.cp0, 'y', og.yAxis.minLimit, og.yAxis.maxLimit).name('Amplitude').listen();
+
+
+	f.addColor(op.cp, 'nonactiveColor').onChange(function(value) {
+
+		op.cp0.nonactiveColor = value;
+
+
+		// Let us assume that the point is not active while the user is
+		// changing the color.
+
+		op.cp.strokeColor = op.cp.nonactiveColor;
+		op.cp0.strokeColor = op.cp.nonactiveColor;
+
+	}).name('Color').listen();
+
+
+	f.add(op.cp, 'outline').onChange(function(value) {
+
+		op.cp0.outline = value;
+
+	}).name('Outline').listen();
+
+
+	f.onChange(function() {
+
+		hz_editor.notifyObservers();
+
+	});
+
+
+	f.add({
+
+		'removePoint': function() {
+
+			hz_editor.removeControlPoint(op);
+
+		}
+
+	}, 'removePoint').name('Remove Control Point');
+
+}
+
+
+gui.add({
+
+	'newControlPoint': addControlPointToGUI
+
+}, 'newControlPoint').name('New Control Point');
+
+
+
+
+
+function amendAddControlPoint(graph) {
+
+	var f = graph.addControlPoint;
+
+	graph.addControlPoint = function() {
+
+		var oscillatorPoint = f.apply(graph, arguments);
+
+		addControlPointToGUI(oscillatorPoint);
+
+		return oscillatorPoint;
+
+	}
+
+}
+
+amendAddControlPoint(ir);
+amendAddControlPoint(fg);
+amendAddControlPoint(og);
+
+
+
+var f = hz_editor.removeControlPoint;
+
+hz_editor.removeControlPoint = function(op) {
+
+	gui.removeFolder(op.fname);
+	f.call(hz_editor, op);
+
+};
+},{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./frequencygraph.js":10,"./hzeditor.js":12,"./irgraph.js":13,"./offsetgraph.js":19}],17:[function(require,module,exports){
 class MouseControl {
 
 	constructor(graph) {
@@ -2845,7 +3020,7 @@ class OffsetGraph extends Graph {
 		var fromX = this.xAxis.canvasToGraph(x),
 			fromY = this.yAxis.canvasToGraph(y);
 
-		this.editor.parent.addControlPointEditor0(fromX, fromY);
+		return this.editor.parent.addControlPointEditor0(fromX, fromY);
 	}
 
 

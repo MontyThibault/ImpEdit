@@ -367,7 +367,7 @@ class FrequencyGraph extends Graph {
 			fromY = this.yAxis.canvasToGraph(y);
 
 
-		this.editor.parent.addControlPointEditor(fromX, fromY);
+		return this.editor.parent.addControlPointEditor(fromX, fromY);
 
 	}
 

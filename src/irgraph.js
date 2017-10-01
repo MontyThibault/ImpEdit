@@ -66,15 +66,6 @@ class IRGraph extends Graph {
 	}
 
 
-	addControlPoint(x, y) {
-
-		var fromX = this.xAxis.canvasToGraph(x),
-			fromY = this.yAxis.canvasToGraph(y);
-
-		this.editor.addControlPoint(fromX, fromY);
-	}
-
-
 	// getIR(buffer, samplerate) {
 
 	// 	this.lineeditor.toBuffer(buffer, samplerate);

@@ -68,6 +68,22 @@ class HzEditor extends PointEditor {
 
 		this.controlpoints.push(op);
 
+		return op;
+
+	}
+
+
+	addControlPointDefault() {
+
+		var cp1 = this.subEditor._addControlPointNoUpdate(),
+			cp2 = this.subEditor0._addControlPointNoUpdate();
+
+		var op = this._addControlPointNoUpdate(cp1, cp2);
+
+		this.notifyObservers();
+
+		return op;
+
 	}
 
 
@@ -77,9 +93,11 @@ class HzEditor extends PointEditor {
 			cp2 = this.subEditor0._addControlPointNoUpdate(x0, y0);
 
 
-		this._addControlPointNoUpdate(cp1, cp2);
+		var op = this._addControlPointNoUpdate(cp1, cp2);
 
 		this.notifyObservers();
+
+		return op;
 
 	}
 
@@ -91,7 +109,11 @@ class HzEditor extends PointEditor {
 
 		this._addControlPointNoUpdate(cp1, cp2);
 
+		var op = this._addControlPointNoUpdate(cp1, cp2);
+
 		this.notifyObservers();
+
+		return op;
 
 	}
 
@@ -101,9 +123,11 @@ class HzEditor extends PointEditor {
 		var cp1 = this.subEditor._addControlPointNoUpdate(),
 			cp2 = this.subEditor0._addControlPointNoUpdate(x, y);
 
-		this._addControlPointNoUpdate(cp1, cp2);
+		var op = this._addControlPointNoUpdate(cp1, cp2);
 
 		this.notifyObservers();
+
+		return op;
 
 	}
 

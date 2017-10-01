@@ -90,24 +90,32 @@ attachAudioDOM(audio);
 
 
 
-function debounce(f, delay) {
-  var timer = null;
-
+function throttle(fn, threshhold, scope) {
+  threshhold || (threshhold = 250);
+  var last,
+      deferTimer;
   return function () {
-    var context = this, 
-    	args = arguments;
+    var context = scope || this;
 
-    clearTimeout(timer);
-
-    timer = setTimeout(function () {
-      f.apply(context, args);
-    }, delay);
+    var now = +new Date,
+        args = arguments;
+    if (last && now < last + threshhold) {
+      // hold on to it
+      clearTimeout(deferTimer);
+      deferTimer = setTimeout(function () {
+        last = now;
+        fn.apply(context, args);
+      }, threshhold);
+    } else {
+      last = now;
+      fn.apply(context, args);
+    }
   };
 }
 
 
 
-totalBuffer.addObserver(debounce(function() {
+totalBuffer.addObserver(throttle(function() {
 
 	audio.updateConvolver(this.buffer);
 
@@ -145,5 +153,134 @@ function draw() {
 	
 }
 
-window.onresize();
 
+window.onload = window.onresize;
+window.onfocus = window.onresize;
+
+
+
+////////////////////////
+
+
+dat.GUI.prototype.removeFolder = function(name) {
+
+  var folder = this.__folders[name];
+
+
+  if (!folder) {
+
+    return;
+
+  }
+
+  folder.close();
+
+  this.__ul.removeChild(folder.domElement.parentNode);
+  delete this.__folders[name];
+  this.onResize();
+
+}
+
+
+var gui = new dat.GUI();
+
+
+
+
+var i = 0;
+
+
+function addControlPointToGUI(op) {
+
+	var f = gui.addFolder('CP ' + i++);
+
+	var op = op || hz_editor.addControlPointDefault();
+	op.fname = f.name;
+
+	f.add(op.cp, 'x', fg.xAxis.minLimit, fg.xAxis.maxLimit).name('Frequency').listen();
+	f.add(op.cp, 'y', fg.yAxis.minLimit, fg.yAxis.maxLimit).name('Damping').listen();
+	f.add(op.cp0, 'x', og.xAxis.minLimit, og.xAxis.maxLimit).name('Phase').listen();
+	f.add(op.cp0, 'y', og.yAxis.minLimit, og.yAxis.maxLimit).name('Amplitude').listen();
+
+
+	f.addColor(op.cp, 'nonactiveColor').onChange(function(value) {
+
+		op.cp0.nonactiveColor = value;
+
+
+		// Let us assume that the point is not active while the user is
+		// changing the color.
+
+		op.cp.strokeColor = op.cp.nonactiveColor;
+		op.cp0.strokeColor = op.cp.nonactiveColor;
+
+	}).name('Color').listen();
+
+
+	f.add(op.cp, 'outline').onChange(function(value) {
+
+		op.cp0.outline = value;
+
+	}).name('Outline').listen();
+
+
+	f.onChange(function() {
+
+		hz_editor.notifyObservers();
+
+	});
+
+
+	f.add({
+
+		'removePoint': function() {
+
+			hz_editor.removeControlPoint(op);
+
+		}
+
+	}, 'removePoint').name('Remove Control Point');
+
+}
+
+
+gui.add({
+
+	'newControlPoint': addControlPointToGUI
+
+}, 'newControlPoint').name('New Control Point');
+
+
+
+
+
+function amendAddControlPoint(graph) {
+
+	var f = graph.addControlPoint;
+
+	graph.addControlPoint = function() {
+
+		var oscillatorPoint = f.apply(graph, arguments);
+
+		addControlPointToGUI(oscillatorPoint);
+
+		return oscillatorPoint;
+
+	}
+
+}
+
+amendAddControlPoint(ir);
+amendAddControlPoint(fg);
+amendAddControlPoint(og);
+
+
+
+var f = hz_editor.removeControlPoint;
+
+hz_editor.removeControlPoint = function(op) {
+
+	gui.removeFolder(op.fname);
+	f.call(hz_editor, op);
+
+};
