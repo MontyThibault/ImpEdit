@@ -107,8 +107,6 @@ class HzEditor extends PointEditor {
 		var cp1 = this.subEditor._addControlPointNoUpdate(x, y),
 			cp2 = this.subEditor0._addControlPointNoUpdate();
 
-		this._addControlPointNoUpdate(cp1, cp2);
-
 		var op = this._addControlPointNoUpdate(cp1, cp2);
 
 		this.notifyObservers();
@@ -163,6 +161,12 @@ class HzEditor extends PointEditor {
 		for(var i = 0; i < this.controlpoints.length; i++) {
 
 			var cp = this.controlpoints[i];
+
+			if(cp.disabled) {
+
+				continue;
+
+			}
 
 
 			for(var j = 0; j < this.buffer.length; j++) {

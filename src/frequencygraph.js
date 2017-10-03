@@ -20,8 +20,8 @@ class FrequencyGraph extends Graph {
 		this.onscreen3dContext = onscreen3dCanvas.getContext('2d');
 
 		
-		this.xAxis = new LogAxis(true, 5, 10000, function() { return this.canvas.width; }.bind(this));
-		this.yAxis = new LogAxis(false, -1000, -1, function() { return this.canvas.height; }.bind(this));
+		this.xAxis = new LogAxis(true, 100, 10000, function() { return this.canvas.width; }.bind(this));
+		this.yAxis = new LogAxis(false, -1000, -10, function() { return this.canvas.height; }.bind(this));
 
 		this.initAxes(this.xAxis, this.yAxis);
 

@@ -69,27 +69,33 @@ class Audio {
 		this.convolver.normalize = false;
 
 
-
 		this.gainNode = this.audioContext.createGain();
 
 
+		this.oscillatorNode = this.audioContext.createOscillator();
+		this.oscillatorNode.type = 'sine';
+		this.oscillatorNode.frequency.value = 3000;
+		this.oscillatorNode.start();
 
+
+		this.oscillatorOverride = false;
 		this.convolve = false;
 		this.fft = false;
+
 
 		this.reconnect();
 
 	}
 
 
-	updateConvolver(buffer) {
+	updateConvolver(arrayBuffer) {
 
 		// Simply this.convolver.buffer.copyToChannel(this.convolutionBufferArray, 0, 0);
 		// does not work for some reason. But enter as a local variable
 
 		var convlutionBuffer = this.convolver.buffer;
 
-		convlutionBuffer.copyToChannel(buffer, 0, 0);
+		convlutionBuffer.copyToChannel(arrayBuffer, 0, 0);
 
 		this.convolver.buffer = convlutionBuffer;
 
@@ -165,6 +171,7 @@ class Audio {
 		this.fft_processor.disconnect();
 		this.gainNode.disconnect();
 		this.convolver.disconnect();
+		this.oscillatorNode.disconnect();
 
 
 		var last = this.source;
@@ -189,6 +196,23 @@ class Audio {
 
 			last.connect(this.convolver);
 			last = this.convolver;
+
+		}
+
+
+		if(this.oscillatorOverride) {
+
+			last = this.oscillatorNode;
+
+			if(!this.convolver.normalize) {
+
+				this.gainNode.disconnect();
+
+				last.connect(this.gainNode);
+				last = this.gainNode;
+
+			}
+
 
 		}
 

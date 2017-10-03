@@ -399,27 +399,33 @@ class Audio {
 		this.convolver.normalize = false;
 
 
-
 		this.gainNode = this.audioContext.createGain();
 
 
+		this.oscillatorNode = this.audioContext.createOscillator();
+		this.oscillatorNode.type = 'sine';
+		this.oscillatorNode.frequency.value = 3000;
+		this.oscillatorNode.start();
 
+
+		this.oscillatorOverride = false;
 		this.convolve = false;
 		this.fft = false;
+
 
 		this.reconnect();
 
 	}
 
 
-	updateConvolver(buffer) {
+	updateConvolver(arrayBuffer) {
 
 		// Simply this.convolver.buffer.copyToChannel(this.convolutionBufferArray, 0, 0);
 		// does not work for some reason. But enter as a local variable
 
 		var convlutionBuffer = this.convolver.buffer;
 
-		convlutionBuffer.copyToChannel(buffer, 0, 0);
+		convlutionBuffer.copyToChannel(arrayBuffer, 0, 0);
 
 		this.convolver.buffer = convlutionBuffer;
 
@@ -495,6 +501,7 @@ class Audio {
 		this.fft_processor.disconnect();
 		this.gainNode.disconnect();
 		this.convolver.disconnect();
+		this.oscillatorNode.disconnect();
 
 
 		var last = this.source;
@@ -522,6 +529,23 @@ class Audio {
 
 		}
 
+
+		if(this.oscillatorOverride) {
+
+			last = this.oscillatorNode;
+
+			if(!this.convolver.normalize) {
+
+				this.gainNode.disconnect();
+
+				last.connect(this.gainNode);
+				last = this.gainNode;
+
+			}
+
+
+		}
+
 		last.connect(this.audioContext.destination);
 
 	}
@@ -531,18 +555,125 @@ class Audio {
 
 module.exports = Audio;
 },{"jsfft":2}],4:[function(require,module,exports){
+require('./datguimodifications.js');
+
+
 module.exports = function(audio) {
 
-	var convolution_enabled = document.getElementById('convolution_enabled'),
-		fft_enabled = document.getElementById('fft_enabled'),
-		range_label = document.getElementById('range_label'),
-		range_slider = document.getElementById('range_slider'),
-		normalization_enabled = document.getElementById('normalization_enabled'),
-		gain_label = document.getElementById('gain_label'),
-		gain_slider = document.getElementById('gain_slider');
+	var file_input = document.createElement('input');
+	file_input.setAttribute('type', 'file');
 
 
-	var audio_file = document.getElementById('audio_file');
+	var params = {
+
+		'Convolution Enabled': true,
+		'Normalization Enabled': true,
+		'FFT Enabled': false,
+		'Gain': 0.1,
+		'FFT Frequency': 1000
+
+	};
+
+
+
+	var audioGUI = new dat.GUI({
+
+		width: 300
+
+	});
+
+
+	audioGUI.add({
+
+		'Choose File': function() {
+
+			file_input.click();
+
+		}
+
+	}, 'Choose File');
+
+
+	var convC = audioGUI.add(params, 'Convolution Enabled').onChange(function(v) {
+
+		if(v) {
+
+			audio.convolveEnable();
+
+		} else {
+
+			audio.convolveDisable();
+
+		}
+
+	});
+
+
+	var normC = audioGUI.add(params, 'Normalization Enabled');
+
+	var gainC = audioGUI.add(params, 'Gain', 0.001, 1).onChange(function(v) {
+
+		audio.gainNode.gain.value = v;
+
+	});
+
+	gainC.log = true;
+
+
+	normC.onChange(function(v) {
+
+		if(v) {
+
+			audio.normalizationEnable();
+			gainC.disable();
+
+		} else {
+
+			audio.normalizationDisable();
+			gainC.enable();
+
+		}
+
+	});
+
+
+	var fftEnblC = audioGUI.add(params, 'FFT Enabled');
+
+	var fftFreqC = audioGUI.add(params, 'FFT Frequency', 100, 10000).onChange(function(v) {
+
+		audio.lowpass_cutoff = v;
+	
+	});
+
+	fftFreqC.log = true;
+
+
+	fftEnblC.onChange(function(v) {
+
+		if(v) {
+
+			audio.fftEnable();
+			fftFreqC.enable();
+
+		} else {
+
+			audio.fftDisable();
+			fftFreqC.disable();
+
+		}
+
+	});
+
+
+	// Defaults
+
+	convC.setValue(convC.getValue());
+	normC.setValue(normC.getValue());
+	gainC.setValue(gainC.getValue());
+	fftEnblC.setValue(fftEnblC.getValue());
+	fftFreqC.setValue(fftFreqC.getValue());
+
+
 
 
 	// Check for BlobURL support
@@ -554,95 +685,11 @@ module.exports = function(audio) {
     } 
 
 
-	convolution_enabled.onclick = function(e) {
-
-		if(convolution_enabled.checked) {
-
-			audio.convolveEnable();
-		
-		} else {
-
-			audio.convolveDisable();
-
-		}
-
-	};
-
-
-	fft_enabled.onclick = function(e) {
-
-		if(fft_enabled.checked) {
-
-			audio.fftEnable();
-			range_label.style.visibility = "visible";
-			range_slider.style.visibility = "visible";
-		
-		} else {
-
-			audio.fftDisable();
-			range_label.style.visibility = "hidden";
-			range_slider.style.visibility = "hidden";
-
-		}
-
-	};
-
-
-	normalization_enabled.onclick = function(e) {
-
-		if(normalization_enabled.checked) {
-
-			audio.normalizationEnable();
-			gain_label.style.visibility = "hidden";
-			gain_slider.style.visibility = "hidden";
-
-		} else {
-
-			audio.normalizationDisable();
-			gain_label.style.visibility = "visible";
-			gain_slider.style.visibility = "visible";
-
-		}
-
-	};
-
-
-	var range_min = 20;
-	var range_max = 20000;
-
-	var range_log_base = 10;
-
-	range_slider.min = Math.log(range_min) / Math.log(range_log_base);
-	range_slider.max = Math.log(range_max) / Math.log(range_log_base);
-
-	range_slider.oninput = function() {
-
-		var n = Math.floor(Math.pow(range_log_base, this.value));
-
-		range_label.innerHTML = n + ' Hz';
-		audio.lowpass_cutoff = n;
-
-	};
-
-	range_slider.value = (Math.log(range_min) + Math.log(range_max)) 
-			/ (2 * Math.log(range_log_base));
-	range_slider.oninput();
-
-
-
-	gain_slider.oninput = function() {
-
-		audio.gainNode.gain.value = Number(this.value);
-
-		gain_label.innerHTML = 'Gain: ' + this.value;
-
-	};
-
 
 	// http://jsfiddle.net/adamazad/0oy5moph/
-	audio_file.onchange = function(e) {
+	file_input.onchange = function(e) {
 
-		var file =  audio_file.files[0];
+		var file =  file_input.files[0];
 		var fileURL = blob.createObjectURL(file);
 
 		var myAudio = document.querySelector('audio');
@@ -651,27 +698,8 @@ module.exports = function(audio) {
 	};
 
 
-
-
-
-
-	// Defaults
-
-	normalization_enabled.checked = true;
-	normalization_enabled.onclick();
-
-	convolution_enabled.checked = false;
-	convolution_enabled.onclick();
-
-	fft_enabled.checked = false;
-	fft_enabled.onclick();
-
-	gain_slider.value = 1;
-	gain_slider.oninput();
-
-
 };
-},{}],5:[function(require,module,exports){
+},{"./datguimodifications.js":9}],5:[function(require,module,exports){
 var RangeSlider = require('./rangeslider.js');
 
 
@@ -927,7 +955,7 @@ class Axis {
 
 
 module.exports = Axis;
-},{"./rangeslider.js":23}],6:[function(require,module,exports){
+},{"./rangeslider.js":24}],6:[function(require,module,exports){
 class BufferLine {
 
 	constructor(buffer, samplerate) {
@@ -1065,7 +1093,7 @@ class BufferSum extends Observable {
 
 
 module.exports = BufferSum;
-},{"./observable.js":18}],8:[function(require,module,exports){
+},{"./observable.js":19}],8:[function(require,module,exports){
 class ControlPoint {
 
 	constructor(x, y, editor, graph) {
@@ -1082,7 +1110,6 @@ class ControlPoint {
 		this.nonactiveColor = '#000000';
 
 		this.outline = false;
-
 
 		this.onactiveend();
 		
@@ -1164,6 +1191,57 @@ class ControlPoint {
 
 module.exports = ControlPoint;
 },{}],9:[function(require,module,exports){
+
+
+// Overwrite dat.GUI close button position
+// By default set to absolute (not sure why...) and messes with floating.
+
+var style = document.createElement('style');
+document.head.appendChild(style);
+
+style.sheet.insertRule('.dg.main .close-button.close-bottom { position: static; }');
+
+
+
+
+dat.GUI.prototype.removeFolder = function(name) {
+
+  var folder = this.__folders[name];
+
+
+  if (!folder) {
+
+    return;
+
+  }
+
+  folder.close();
+
+  this.__ul.removeChild(folder.domElement.parentNode);
+  delete this.__folders[name];
+  this.onResize();
+
+}
+
+
+dat.controllers.NumberControllerSlider.prototype.disable = function() {
+
+	this.domElement.style.pointerEvents = "none";
+	this.domElement.style.opacity = 0.5;
+
+};
+
+
+dat.controllers.NumberControllerSlider.prototype.enable = function() {
+
+	this.domElement.style.pointerEvents = "auto";
+	this.domElement.style.opacity = 1.0;
+
+};
+
+
+module.exports = undefined;
+},{}],10:[function(require,module,exports){
 module.exports = `
 
 
@@ -1297,7 +1375,7 @@ void main() {
 
 `;
 
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var Graph = require('./graph.js');
 var HzEditor = require('./hzeditor.js');
 var LogAxis = require('./logaxis.js');
@@ -1320,8 +1398,8 @@ class FrequencyGraph extends Graph {
 		this.onscreen3dContext = onscreen3dCanvas.getContext('2d');
 
 		
-		this.xAxis = new LogAxis(true, 5, 10000, function() { return this.canvas.width; }.bind(this));
-		this.yAxis = new LogAxis(false, -1000, -1, function() { return this.canvas.height; }.bind(this));
+		this.xAxis = new LogAxis(true, 100, 10000, function() { return this.canvas.width; }.bind(this));
+		this.yAxis = new LogAxis(false, -1000, -10, function() { return this.canvas.height; }.bind(this));
 
 		this.initAxes(this.xAxis, this.yAxis);
 
@@ -1677,7 +1755,7 @@ class FrequencyGraph extends Graph {
 
 module.exports = FrequencyGraph;
 
-},{"./axis.js":5,"./fShaderGLSL.js":9,"./graph.js":11,"./hzeditor.js":12,"./logaxis.js":15,"./vShaderGLSL.js":26}],11:[function(require,module,exports){
+},{"./axis.js":5,"./fShaderGLSL.js":10,"./graph.js":12,"./hzeditor.js":13,"./logaxis.js":16,"./vShaderGLSL.js":27}],12:[function(require,module,exports){
 var MouseControl = require('./mousecontrol.js');
 var ReferenceLines = require('./referencelines.js');
 var RangeSlider = require('./rangeslider.js');
@@ -1873,7 +1951,7 @@ class Graph {
 }
 
 module.exports = Graph;
-},{"./mousecontrol.js":17,"./rangeslider.js":23,"./referencelines.js":24}],12:[function(require,module,exports){
+},{"./mousecontrol.js":18,"./rangeslider.js":24,"./referencelines.js":25}],13:[function(require,module,exports){
 var PointEditor = require('./pointeditor.js');
 var OscillatorPoint = require('./oscillatorPoint.js');
 
@@ -1983,8 +2061,6 @@ class HzEditor extends PointEditor {
 		var cp1 = this.subEditor._addControlPointNoUpdate(x, y),
 			cp2 = this.subEditor0._addControlPointNoUpdate();
 
-		this._addControlPointNoUpdate(cp1, cp2);
-
 		var op = this._addControlPointNoUpdate(cp1, cp2);
 
 		this.notifyObservers();
@@ -2040,6 +2116,12 @@ class HzEditor extends PointEditor {
 
 			var cp = this.controlpoints[i];
 
+			if(cp.disabled) {
+
+				continue;
+
+			}
+
 
 			for(var j = 0; j < this.buffer.length; j++) {
 
@@ -2059,7 +2141,7 @@ class HzEditor extends PointEditor {
 
 
 module.exports = HzEditor;
-},{"./oscillatorPoint.js":20,"./pointeditor.js":21}],13:[function(require,module,exports){
+},{"./oscillatorPoint.js":21,"./pointeditor.js":22}],14:[function(require,module,exports){
 var Graph = require('./graph.js');
 var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
@@ -2146,7 +2228,7 @@ class IRGraph extends Graph {
 
 
 module.exports = IRGraph;
-},{"./axis.js":5,"./bufferline.js":6,"./graph.js":11,"./lineeditor.js":14}],14:[function(require,module,exports){
+},{"./axis.js":5,"./bufferline.js":6,"./graph.js":12,"./lineeditor.js":15}],15:[function(require,module,exports){
 var PointEditor = require('./pointeditor.js');
 var PointLine = require('./pointline.js');
 
@@ -2296,7 +2378,7 @@ class LineEditor extends PointEditor {
 
 module.exports = LineEditor;
 
-},{"./pointeditor.js":21,"./pointline.js":22}],15:[function(require,module,exports){
+},{"./pointeditor.js":22,"./pointline.js":23}],16:[function(require,module,exports){
 var Axis = require('./axis.js');
 
 
@@ -2454,7 +2536,7 @@ class LogAxis extends Axis {
 
 
 module.exports = LogAxis;
-},{"./axis.js":5}],16:[function(require,module,exports){
+},{"./axis.js":5}],17:[function(require,module,exports){
 
 
 var IRGraph = require("./irgraph.js");
@@ -2536,6 +2618,7 @@ ir.setVizIR(totalBuffer.buffer);
 fg.setVizIR(totalBuffer.buffer);
 
 
+
 //////////////////////////
 
 
@@ -2569,11 +2652,26 @@ function throttle(fn, threshhold, scope) {
 
 
 
+
+totalBuffer.addObserver(function() {
+
+	// Dirac-delta
+	this.buffer[0] = 1;
+
+});
+
+
 totalBuffer.addObserver(throttle(function() {
 
 	audio.updateConvolver(this.buffer);
 
 }, 200));
+
+
+// Prepare default buffer.
+
+totalBuffer.notifyObservers();
+
 
 
 totalBuffer.addObserver(function() {
@@ -2616,30 +2714,17 @@ window.onfocus = window.onresize;
 
 /////////////////
 
-dat.GUI.prototype.removeFolder = function(name) {
-
-  var folder = this.__folders[name];
 
 
-  if (!folder) {
+var gui = new dat.GUI({
 
-    return;
+	width: 480
 
-  }
-
-  folder.close();
-
-  this.__ul.removeChild(folder.domElement.parentNode);
-  delete this.__folders[name];
-  this.onResize();
-
-}
-
-
-var gui = new dat.GUI();
+});
 
 
 var i = 0;
+
 
 
 function addControlPointToGUI(op) {
@@ -2649,10 +2734,27 @@ function addControlPointToGUI(op) {
 	var op = op || hz_editor.addControlPointDefault();
 	op.fname = f.name;
 
-	f.add(op.cp, 'x', fg.xAxis.minLimit, fg.xAxis.maxLimit).name('Frequency').listen();
-	f.add(op.cp, 'y', fg.yAxis.minLimit, fg.yAxis.maxLimit).name('Damping').listen();
-	f.add(op.cp0, 'x', og.xAxis.minLimit, og.xAxis.maxLimit).name('Phase').listen();
-	f.add(op.cp0, 'y', og.yAxis.minLimit, og.yAxis.maxLimit).name('Amplitude').listen();
+
+
+	f.sendFreqToBufferOverride = false;
+
+
+	var freqC = f.add(op.cp, 'x', fg.xAxis.minLimit, fg.xAxis.maxLimit)
+		.onChange(function(v) {
+
+		if(f.sendFreqToBufferOverride) {
+
+			audio.oscillatorNode.frequency.value = v;
+
+		}
+
+	}).name('Frequency');
+	freqC.log = true;
+	freqC.updateDisplay();
+
+	var dampC = f.add(op.cp, 'y', fg.yAxis.minLimit, fg.yAxis.maxLimit).name('Damping');
+	var phaseC = f.add(op.cp0, 'x', og.xAxis.minLimit, og.xAxis.maxLimit).name('Phase');
+	var ampC = f.add(op.cp0, 'y', og.yAxis.minLimit, og.yAxis.maxLimit).name('Amplitude');
 
 
 	f.addColor(op.cp, 'nonactiveColor').onChange(function(value) {
@@ -2669,11 +2771,39 @@ function addControlPointToGUI(op) {
 	}).name('Color').listen();
 
 
+
+	// These are broken in the event that the cp0 value is changed from
+	// elsewhere than this GUI.
+
 	f.add(op.cp, 'outline').onChange(function(value) {
 
 		op.cp0.outline = value;
 
-	}).name('Outline').listen();
+	}).name('Outline');
+
+
+	f.add(op, 'disabled').name('Disable');
+
+
+	f.add({
+
+		'Toggle Tone': false
+
+
+	}, 'Toggle Tone').onChange(function(value) {
+
+
+		f.sendFreqToBufferOverride = value;
+		audio.oscillatorOverride = value;
+		audio.reconnect();
+
+
+		// Propagate change to buffer override (see freqC controller above)
+
+		freqC.setValue(freqC.getValue());
+
+
+	});
 
 
 	f.onChange(function() {
@@ -2681,6 +2811,14 @@ function addControlPointToGUI(op) {
 		hz_editor.notifyObservers();
 
 	});
+
+
+	f.onFinishChange(function() {
+
+		hz_editor.notifyObservers();
+
+	});
+
 
 
 	f.add({
@@ -2693,7 +2831,20 @@ function addControlPointToGUI(op) {
 
 	}, 'removePoint').name('Remove Control Point');
 
+
 }
+
+
+hz_editor.addObserver(function() {
+
+	for(var i in gui.__folders) {
+
+		gui.__folders[i].updateDisplay();
+
+	}
+
+});
+
 
 
 gui.add({
@@ -2735,25 +2886,7 @@ hz_editor.removeControlPoint = function(op) {
 	f.call(hz_editor, op);
 
 };
-
-
-
-/////////////////////////
-
-
-
-var gui2 = new dat.GUI();
-
-
-// Overwrite dat.GUI close button position
-// By default set to absolute (not sure why...) and messes with floating.
-
-var style = document.createElement('style');
-document.head.appendChild(style);
-
-style.sheet.insertRule('.dg.main .close-button.close-bottom { position: static; }');
-
-},{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./frequencygraph.js":10,"./hzeditor.js":12,"./irgraph.js":13,"./offsetgraph.js":19}],17:[function(require,module,exports){
+},{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./frequencygraph.js":11,"./hzeditor.js":13,"./irgraph.js":14,"./offsetgraph.js":20}],18:[function(require,module,exports){
 class MouseControl {
 
 	constructor(graph) {
@@ -2930,7 +3063,7 @@ class MouseControl {
 
 
 module.exports = MouseControl; // Singleton
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 
 class Observable {
 
@@ -2973,7 +3106,7 @@ class Observable {
 
 
 module.exports = Observable;
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 var Graph = require('./graph.js');
 var Axis = require('./axis.js');
 var LogAxis = require('./logaxis.js');
@@ -3040,7 +3173,7 @@ class OffsetGraph extends Graph {
 
 
 module.exports = OffsetGraph;
-},{"./axis.js":5,"./graph.js":11,"./logaxis.js":15}],20:[function(require,module,exports){
+},{"./axis.js":5,"./graph.js":12,"./logaxis.js":16}],21:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 
 
@@ -3053,6 +3186,8 @@ class OscillatorPoint {
 
 		cp.parent = this;
 		cp0.parent = this;
+
+		this.disabled = false;
 
 
 	}
@@ -3074,7 +3209,7 @@ class OscillatorPoint {
 }
 
 module.exports = OscillatorPoint;
-},{"./controlpoint.js":8}],21:[function(require,module,exports){
+},{"./controlpoint.js":8}],22:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 var Observable = require('./observable.js');
 
@@ -3172,7 +3307,7 @@ class PointEditor extends Observable {
 
 
 module.exports = PointEditor;
-},{"./controlpoint.js":8,"./observable.js":18}],22:[function(require,module,exports){
+},{"./controlpoint.js":8,"./observable.js":19}],23:[function(require,module,exports){
 class PointLine {
 
 	constructor() {
@@ -3184,6 +3319,13 @@ class PointLine {
 
 
 	draw(context, toX, toY) {
+
+
+		if(this.points.length === 0) {
+
+			return;
+
+		}
 
 		context.strokeStyle = this.color;
 
@@ -3203,7 +3345,7 @@ class PointLine {
 
 
 module.exports = PointLine;
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 // Throughout this class, p refers to "principal" and s refers to
 // "secondary", as a generic version of x/y or y/x, depending on the orientation.
 
@@ -3771,7 +3913,7 @@ class RangeSlider {
 
 module.exports = RangeSlider;
 
-},{}],24:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 var ReferenceLinesAxis = require('./referencelinesaxis.js');
 
 
@@ -3894,7 +4036,7 @@ class ReferenceLines {
 
 
 module.exports = ReferenceLines;
-},{"./referencelinesaxis.js":25}],25:[function(require,module,exports){
+},{"./referencelinesaxis.js":26}],26:[function(require,module,exports){
 
 
 class ReferenceLinesAxis {
@@ -4356,7 +4498,7 @@ class ReferenceLinesAxis {
 
 
 module.exports = ReferenceLinesAxis;
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 module.exports = `
 
 
@@ -4396,4 +4538,4 @@ void main() {
 }			
 
 `;
-},{}]},{},[16]);
+},{}]},{},[17]);
