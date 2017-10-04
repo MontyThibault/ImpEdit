@@ -332,13 +332,6 @@ function LowestOddFactor(n) {
 var jsfft = require('jsfft');
 
 
-function set_context(that, f) {
-	return function() {
-		f.apply(that, arguments);
-	}
-}
-
-
 class Audio {
 
 
@@ -357,21 +350,22 @@ class Audio {
 
 
 
-		var lowpass_map = set_context(this, function(freq, i, n) {
+		var lowpass_map = function(freq, i, n) {
 
 			var hz = (this.audioContext.sampleRate / this.block_size)  * (i + 1); 
+
 
 			if(hz > this.lowpass_cutoff) {
 				freq.real = 0;
 				freq.imag = 0;
 			}
 
-		});
+		}.bind(this);
+
+
 
 		this.fft_processor = this.audioContext.createScriptProcessor(this.block_size, 2, 2);
-		this.fft_processor.onaudioprocess = 
-				set_context(this, function(audioProcessingEvent) {
-
+		this.fft_processor.onaudioprocess = function(audioProcessingEvent) {
 
 			var inputBuffer = audioProcessingEvent.inputBuffer;
 			var outputBuffer = audioProcessingEvent.outputBuffer;
@@ -381,14 +375,18 @@ class Audio {
 				z_array.real = inputBuffer.getChannelData(channel);
 				z_array.imag.fill(0);
 
-
 				z_array.frequencyMap(lowpass_map);
 
+				this._blendBlock(z_array.real, channel);
+				this._previousBlend[channel] = z_array.real[z_array.real.length - 1];
 
 			    outputBuffer.copyToChannel(z_array.real, channel, 0);
+
 		    }
 
-		});
+		}.bind(this);
+
+		this._previousBlend = [0, 0];
 
 
 
@@ -414,6 +412,49 @@ class Audio {
 
 
 		this.reconnect();
+
+	}
+
+
+	_blendBlock(buffer, channel) {
+
+
+		// Quadratic blending.
+
+		function factor(i) {
+
+			return i * i;
+
+		}
+
+
+		// Smooth the beginning
+
+		var blendLength = 30;
+		var f;
+
+		for(var i = 0; i < blendLength; i++) {
+
+			f = factor(i / blendLength);
+
+			buffer[i] = f * buffer[i] + (1 - f) * this._previousBlend[channel];
+
+		}
+
+
+		// Smooth the end
+
+		var end = buffer.length - 1;
+		var last = buffer[end];
+
+		for(i = 0; i < blendLength; i++) {
+
+			f = factor(i / blendLength);
+
+			buffer[end - i] = f * buffer[end - i] + (1 - f) * last;
+
+		}
+
 
 	}
 
@@ -639,7 +680,7 @@ module.exports = function(audio) {
 
 	var fftEnblC = audioGUI.add(params, 'FFT Enabled');
 
-	var fftFreqC = audioGUI.add(params, 'FFT Frequency', 100, 10000).onChange(function(v) {
+	var fftFreqC = audioGUI.add(params, 'FFT Frequency', 100, 13000).onChange(function(v) {
 
 		audio.lowpass_cutoff = v;
 	
@@ -1972,7 +2013,7 @@ class HzEditor extends PointEditor {
 
 
 		this.subEditor.defaultX = 1000; // Hz
-		this.subEditor.defaultY = -10; // Damping
+		this.subEditor.defaultY = -100; // Damping
 
 		this.subEditor0.defaultX = 0.5; // Phase (0 - 2pi)
 		this.subEditor0.defaultY = 0.5; // Amplitude
@@ -2623,8 +2664,6 @@ fg.setVizIR(totalBuffer.buffer);
 
 
 var audio = new Audio();
-attachAudioDOM(audio);
-
 
 
 function throttle(fn, threshhold, scope) {
@@ -2718,7 +2757,7 @@ window.onfocus = window.onresize;
 
 var gui = new dat.GUI({
 
-	width: 480
+	width: 400
 
 });
 
@@ -2739,18 +2778,21 @@ function addControlPointToGUI(op) {
 	f.sendFreqToBufferOverride = false;
 
 
-	var freqC = f.add(op.cp, 'x', fg.xAxis.minLimit, fg.xAxis.maxLimit)
-		.onChange(function(v) {
+	var freqC = f.add(op.cp, 'x', fg.xAxis.minLimit, fg.xAxis.maxLimit).onChange(f.updateFreq).name('Frequency');
+
+	freqC.log = true;
+	freqC.updateDisplay();
+
+	f.updateFreq = function() {
 
 		if(f.sendFreqToBufferOverride) {
 
-			audio.oscillatorNode.frequency.value = v;
+			audio.oscillatorNode.frequency.value = freqC.getValue();
 
 		}
 
-	}).name('Frequency');
-	freqC.log = true;
-	freqC.updateDisplay();
+	};
+
 
 	var dampC = f.add(op.cp, 'y', fg.yAxis.minLimit, fg.yAxis.maxLimit).name('Damping');
 	var phaseC = f.add(op.cp0, 'x', og.xAxis.minLimit, og.xAxis.maxLimit).name('Phase');
@@ -2806,6 +2848,7 @@ function addControlPointToGUI(op) {
 	});
 
 
+
 	f.onChange(function() {
 
 		hz_editor.notifyObservers();
@@ -2839,7 +2882,16 @@ hz_editor.addObserver(function() {
 
 	for(var i in gui.__folders) {
 
-		gui.__folders[i].updateDisplay();
+		var f = gui.__folders[i];
+
+		f.updateDisplay();
+
+
+		if(f.updateFreq) {
+
+			f.updateFreq();
+
+		}
 
 	}
 
@@ -2886,6 +2938,12 @@ hz_editor.removeControlPoint = function(op) {
 	f.call(hz_editor, op);
 
 };
+
+
+
+
+attachAudioDOM(audio);
+
 },{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./frequencygraph.js":11,"./hzeditor.js":13,"./irgraph.js":14,"./offsetgraph.js":20}],18:[function(require,module,exports){
 class MouseControl {
 
@@ -3640,16 +3698,16 @@ class RangeSlider {
 			var sl = this.specialLabels[i];
 
 
-			var p = this.graphToSlider(sl[0]);
+			var p = this.graphToSlider(sl.coord);
 
 
 			context.beginPath();
 
-			context.strokeStyle = sl[2];
+			context.strokeStyle = sl.strokeStyle;
 
 			if(sl.length === 4) {
 
-				context.setLineDash(sl[3]);
+				context.setLineDash(sl.dash);
 
 			}
 

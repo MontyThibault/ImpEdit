@@ -82,7 +82,7 @@ module.exports = function(audio) {
 
 	var fftEnblC = audioGUI.add(params, 'FFT Enabled');
 
-	var fftFreqC = audioGUI.add(params, 'FFT Frequency', 100, 10000).onChange(function(v) {
+	var fftFreqC = audioGUI.add(params, 'FFT Frequency', 100, 13000).onChange(function(v) {
 
 		audio.lowpass_cutoff = v;
 	

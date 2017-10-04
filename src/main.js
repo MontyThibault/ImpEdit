@@ -84,8 +84,6 @@ fg.setVizIR(totalBuffer.buffer);
 
 
 var audio = new Audio();
-attachAudioDOM(audio);
-
 
 
 function throttle(fn, threshhold, scope) {
@@ -179,7 +177,7 @@ window.onfocus = window.onresize;
 
 var gui = new dat.GUI({
 
-	width: 480
+	width: 400
 
 });
 
@@ -200,18 +198,21 @@ function addControlPointToGUI(op) {
 	f.sendFreqToBufferOverride = false;
 
 
-	var freqC = f.add(op.cp, 'x', fg.xAxis.minLimit, fg.xAxis.maxLimit)
-		.onChange(function(v) {
+	var freqC = f.add(op.cp, 'x', fg.xAxis.minLimit, fg.xAxis.maxLimit).onChange(f.updateFreq).name('Frequency');
+
+	freqC.log = true;
+	freqC.updateDisplay();
+
+	f.updateFreq = function() {
 
 		if(f.sendFreqToBufferOverride) {
 
-			audio.oscillatorNode.frequency.value = v;
+			audio.oscillatorNode.frequency.value = freqC.getValue();
 
 		}
 
-	}).name('Frequency');
-	freqC.log = true;
-	freqC.updateDisplay();
+	};
+
 
 	var dampC = f.add(op.cp, 'y', fg.yAxis.minLimit, fg.yAxis.maxLimit).name('Damping');
 	var phaseC = f.add(op.cp0, 'x', og.xAxis.minLimit, og.xAxis.maxLimit).name('Phase');
@@ -267,6 +268,7 @@ function addControlPointToGUI(op) {
 	});
 
 
+
 	f.onChange(function() {
 
 		hz_editor.notifyObservers();
@@ -300,7 +302,16 @@ hz_editor.addObserver(function() {
 
 	for(var i in gui.__folders) {
 
-		gui.__folders[i].updateDisplay();
+		var f = gui.__folders[i];
+
+		f.updateDisplay();
+
+
+		if(f.updateFreq) {
+
+			f.updateFreq();
+
+		}
 
 	}
 
@@ -347,3 +358,8 @@ hz_editor.removeControlPoint = function(op) {
 	f.call(hz_editor, op);
 
 };
+
+
+
+
+attachAudioDOM(audio);
