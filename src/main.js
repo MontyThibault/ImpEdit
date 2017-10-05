@@ -1,5 +1,7 @@
 
 
+require('./checkchrome.js');
+
 var IRGraph = require("./irgraph.js");
 var FrequencyGraph = require("./frequencygraph.js");
 var OffsetGraph = require('./offsetgraph.js');
@@ -40,8 +42,9 @@ og.mouseBindings(og_canvas);
 window.onresize = function() {
 
 
-	var height = 410,
-		width = $(window).width(),
+	var height = ($(window).height() - $('audio').height()) / 2 - 5;
+
+	var width = $(window).width(),
 		halfwidth = $(window).width() / 2;
 
 
@@ -49,7 +52,7 @@ window.onresize = function() {
 	fg.setWidthHeight(halfwidth, height);
 	og.setWidthHeight(halfwidth, height);
 
-	fg_div.style = 'height: 410px; width: ' + halfwidth + 'px;';
+	fg_div.style = 'height: ' + height + 'px; width: ' + halfwidth + 'px;';
 
 	ir_canvas.width = width;
 	ir_canvas.height = height;
@@ -292,7 +295,7 @@ function addControlPointToGUI(op) {
 
 		}
 
-	}, 'removePoint').name('Remove Control Point');
+	}, 'removePoint').name('Remove Oscillator');
 
 
 }
@@ -323,7 +326,7 @@ gui.add({
 
 	'newControlPoint': addControlPointToGUI
 
-}, 'newControlPoint').name('New Control Point');
+}, 'newControlPoint').name('New Oscillator');
 
 
 

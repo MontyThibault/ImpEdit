@@ -601,6 +601,25 @@ require('./datguimodifications.js');
 
 module.exports = function(audio) {
 
+
+	var helpbox = document.getElementById('helpbox'),
+		helptext = document.getElementById('helptext');
+
+
+	helpbox.onclick = function(e) {
+
+		if(helptext.style.visibility === 'visible') {
+
+			helptext.style.visibility = 'hidden';
+
+		} else {
+
+			helptext.style.visibility = 'visible';
+
+		}
+
+	};
+
 	var file_input = document.createElement('input');
 	file_input.setAttribute('type', 'file');
 
@@ -740,7 +759,7 @@ module.exports = function(audio) {
 
 
 };
-},{"./datguimodifications.js":9}],5:[function(require,module,exports){
+},{"./datguimodifications.js":10}],5:[function(require,module,exports){
 var RangeSlider = require('./rangeslider.js');
 
 
@@ -996,7 +1015,7 @@ class Axis {
 
 
 module.exports = Axis;
-},{"./rangeslider.js":24}],6:[function(require,module,exports){
+},{"./rangeslider.js":25}],6:[function(require,module,exports){
 class BufferLine {
 
 	constructor(buffer, samplerate) {
@@ -1134,7 +1153,34 @@ class BufferSum extends Observable {
 
 
 module.exports = BufferSum;
-},{"./observable.js":19}],8:[function(require,module,exports){
+},{"./observable.js":20}],8:[function(require,module,exports){
+var isChromium = window.chrome,
+    winNav = window.navigator,
+    vendorName = winNav.vendor,
+    isOpera = winNav.userAgent.indexOf("OPR") > -1,
+    isIEedge = winNav.userAgent.indexOf("Edge") > -1,
+    isIOSChrome = winNav.userAgent.match("CriOS");
+
+if (isIOSChrome) {
+   
+   // is Google Chrome on IOS
+
+} else if (
+  isChromium !== null &&
+  typeof isChromium !== "undefined" &&
+  vendorName === "Google Inc." &&
+  isOpera === false &&
+  isIEedge === false
+) {
+
+   // is Google Chrome
+
+} else { 
+
+   alert('Sorry, due to performance and API compatability, only Chrome is supported.')
+
+}
+},{}],9:[function(require,module,exports){
 class ControlPoint {
 
 	constructor(x, y, editor, graph) {
@@ -1231,7 +1277,7 @@ class ControlPoint {
 
 
 module.exports = ControlPoint;
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 
 
 // Overwrite dat.GUI close button position
@@ -1282,7 +1328,7 @@ dat.controllers.NumberControllerSlider.prototype.enable = function() {
 
 
 module.exports = undefined;
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 module.exports = `
 
 
@@ -1416,7 +1462,7 @@ void main() {
 
 `;
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var Graph = require('./graph.js');
 var HzEditor = require('./hzeditor.js');
 var LogAxis = require('./logaxis.js');
@@ -1796,7 +1842,7 @@ class FrequencyGraph extends Graph {
 
 module.exports = FrequencyGraph;
 
-},{"./axis.js":5,"./fShaderGLSL.js":10,"./graph.js":12,"./hzeditor.js":13,"./logaxis.js":16,"./vShaderGLSL.js":27}],12:[function(require,module,exports){
+},{"./axis.js":5,"./fShaderGLSL.js":11,"./graph.js":13,"./hzeditor.js":14,"./logaxis.js":17,"./vShaderGLSL.js":28}],13:[function(require,module,exports){
 var MouseControl = require('./mousecontrol.js');
 var ReferenceLines = require('./referencelines.js');
 var RangeSlider = require('./rangeslider.js');
@@ -1992,7 +2038,7 @@ class Graph {
 }
 
 module.exports = Graph;
-},{"./mousecontrol.js":18,"./rangeslider.js":24,"./referencelines.js":25}],13:[function(require,module,exports){
+},{"./mousecontrol.js":19,"./rangeslider.js":25,"./referencelines.js":26}],14:[function(require,module,exports){
 var PointEditor = require('./pointeditor.js');
 var OscillatorPoint = require('./oscillatorPoint.js');
 
@@ -2182,7 +2228,7 @@ class HzEditor extends PointEditor {
 
 
 module.exports = HzEditor;
-},{"./oscillatorPoint.js":21,"./pointeditor.js":22}],14:[function(require,module,exports){
+},{"./oscillatorPoint.js":22,"./pointeditor.js":23}],15:[function(require,module,exports){
 var Graph = require('./graph.js');
 var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
@@ -2269,7 +2315,7 @@ class IRGraph extends Graph {
 
 
 module.exports = IRGraph;
-},{"./axis.js":5,"./bufferline.js":6,"./graph.js":12,"./lineeditor.js":15}],15:[function(require,module,exports){
+},{"./axis.js":5,"./bufferline.js":6,"./graph.js":13,"./lineeditor.js":16}],16:[function(require,module,exports){
 var PointEditor = require('./pointeditor.js');
 var PointLine = require('./pointline.js');
 
@@ -2419,7 +2465,7 @@ class LineEditor extends PointEditor {
 
 module.exports = LineEditor;
 
-},{"./pointeditor.js":22,"./pointline.js":23}],16:[function(require,module,exports){
+},{"./pointeditor.js":23,"./pointline.js":24}],17:[function(require,module,exports){
 var Axis = require('./axis.js');
 
 
@@ -2577,8 +2623,10 @@ class LogAxis extends Axis {
 
 
 module.exports = LogAxis;
-},{"./axis.js":5}],17:[function(require,module,exports){
+},{"./axis.js":5}],18:[function(require,module,exports){
 
+
+require('./checkchrome.js');
 
 var IRGraph = require("./irgraph.js");
 var FrequencyGraph = require("./frequencygraph.js");
@@ -2620,8 +2668,9 @@ og.mouseBindings(og_canvas);
 window.onresize = function() {
 
 
-	var height = 410,
-		width = $(window).width(),
+	var height = ($(window).height() - $('audio').height()) / 2 - 5;
+
+	var width = $(window).width(),
 		halfwidth = $(window).width() / 2;
 
 
@@ -2629,7 +2678,7 @@ window.onresize = function() {
 	fg.setWidthHeight(halfwidth, height);
 	og.setWidthHeight(halfwidth, height);
 
-	fg_div.style = 'height: 410px; width: ' + halfwidth + 'px;';
+	fg_div.style = 'height: ' + height + 'px; width: ' + halfwidth + 'px;';
 
 	ir_canvas.width = width;
 	ir_canvas.height = height;
@@ -2872,7 +2921,7 @@ function addControlPointToGUI(op) {
 
 		}
 
-	}, 'removePoint').name('Remove Control Point');
+	}, 'removePoint').name('Remove Oscillator');
 
 
 }
@@ -2903,7 +2952,7 @@ gui.add({
 
 	'newControlPoint': addControlPointToGUI
 
-}, 'newControlPoint').name('New Control Point');
+}, 'newControlPoint').name('New Oscillator');
 
 
 
@@ -2944,7 +2993,7 @@ hz_editor.removeControlPoint = function(op) {
 
 attachAudioDOM(audio);
 
-},{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./frequencygraph.js":11,"./hzeditor.js":13,"./irgraph.js":14,"./offsetgraph.js":20}],18:[function(require,module,exports){
+},{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./checkchrome.js":8,"./frequencygraph.js":12,"./hzeditor.js":14,"./irgraph.js":15,"./offsetgraph.js":21}],19:[function(require,module,exports){
 class MouseControl {
 
 	constructor(graph) {
@@ -3121,7 +3170,7 @@ class MouseControl {
 
 
 module.exports = MouseControl; // Singleton
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 
 class Observable {
 
@@ -3164,7 +3213,7 @@ class Observable {
 
 
 module.exports = Observable;
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 var Graph = require('./graph.js');
 var Axis = require('./axis.js');
 var LogAxis = require('./logaxis.js');
@@ -3231,7 +3280,7 @@ class OffsetGraph extends Graph {
 
 
 module.exports = OffsetGraph;
-},{"./axis.js":5,"./graph.js":12,"./logaxis.js":16}],21:[function(require,module,exports){
+},{"./axis.js":5,"./graph.js":13,"./logaxis.js":17}],22:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 
 
@@ -3267,7 +3316,7 @@ class OscillatorPoint {
 }
 
 module.exports = OscillatorPoint;
-},{"./controlpoint.js":8}],22:[function(require,module,exports){
+},{"./controlpoint.js":9}],23:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 var Observable = require('./observable.js');
 
@@ -3365,7 +3414,7 @@ class PointEditor extends Observable {
 
 
 module.exports = PointEditor;
-},{"./controlpoint.js":8,"./observable.js":19}],23:[function(require,module,exports){
+},{"./controlpoint.js":9,"./observable.js":20}],24:[function(require,module,exports){
 class PointLine {
 
 	constructor() {
@@ -3403,7 +3452,7 @@ class PointLine {
 
 
 module.exports = PointLine;
-},{}],24:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 // Throughout this class, p refers to "principal" and s refers to
 // "secondary", as a generic version of x/y or y/x, depending on the orientation.
 
@@ -3971,7 +4020,7 @@ class RangeSlider {
 
 module.exports = RangeSlider;
 
-},{}],25:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 var ReferenceLinesAxis = require('./referencelinesaxis.js');
 
 
@@ -4094,7 +4143,7 @@ class ReferenceLines {
 
 
 module.exports = ReferenceLines;
-},{"./referencelinesaxis.js":26}],26:[function(require,module,exports){
+},{"./referencelinesaxis.js":27}],27:[function(require,module,exports){
 
 
 class ReferenceLinesAxis {
@@ -4556,7 +4605,7 @@ class ReferenceLinesAxis {
 
 
 module.exports = ReferenceLinesAxis;
-},{}],27:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 module.exports = `
 
 
@@ -4596,4 +4645,4 @@ void main() {
 }			
 
 `;
-},{}]},{},[17]);
+},{}]},{},[18]);
