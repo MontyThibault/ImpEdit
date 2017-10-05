@@ -1,0 +1,7 @@
+This is a completely client-side application that makes use of the Node.js require system and Browserify. Simply run `browserify src/main.js -o build/bundle.js` to convert source to a single file, which is then included in `index.html`.
+
+
+Node dependencies:
+
+- browserify
+- jsfft
