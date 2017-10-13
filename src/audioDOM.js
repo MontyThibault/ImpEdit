@@ -29,6 +29,18 @@ module.exports = function(audio) {
 	var params = {
 
 		'Convolution Enabled': true,
+		'Auto-Update': true,
+		'Update Interval': 10,
+
+
+		// We must add or remove the folder.
+
+		// 'Manual Update': function() {
+
+
+
+		// },
+
 		'Normalization Enabled': true,
 		'FFT Enabled': false,
 		'Gain': 0.1,

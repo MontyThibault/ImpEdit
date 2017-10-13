@@ -1,6 +1,8 @@
 class MouseControl {
 
-	constructor(graph) {
+	constructor(graph, canvas) {
+
+		this.canvas = canvas;
 
 		this.active = false;
 		this.mousedown = false;
@@ -19,13 +21,13 @@ class MouseControl {
 
 	_getX(e) {
 
-		return e.clientX - this.graph.onscreenCanvas.getBoundingClientRect().left;
+		return e.clientX - this.canvas.getBoundingClientRect().left;
 
 	}
 
 	_getY(e) {
 
-		return e.clientY - this.graph.onscreenCanvas.getBoundingClientRect().top;
+		return e.clientY - this.canvas.getBoundingClientRect().top;
 		
 	}
 

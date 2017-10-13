@@ -48,7 +48,8 @@ class Graph {
 		this.onscreenCanvas = onscreenCanvas;
 		this.onscreenContext = onscreenCanvas.getContext('2d');
 
-		this.mousecontrol = new MouseControl(this);
+		this.mousecontrol = new MouseControl(this, onscreenCanvas);
+
 
 		this.vizIR = [];
 
@@ -91,7 +92,7 @@ class Graph {
 
 
 		if(!this.needsUpdate) {
-			return;
+			return false;
 		}
 
 		var xAxis = this.xAxis;
@@ -103,17 +104,18 @@ class Graph {
 
 
 		this._drawElements(this.context, toX, toY);
-		this.copyToCanvas();
 
 		this.needsUpdate = false;
+
+		return true;
 
 	}
 
 
-	copyToCanvas() {
+	copyToCanvas(context) {
 
-		this.onscreenContext.clearRect(0, 0, this.onscreenCanvas.width, this.onscreenCanvas.height);
-		this.onscreenContext.drawImage(this.canvas, 0, 0, this.canvas.width, this.canvas.height);
+		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		context.drawImage(this.canvas, 0, 0, this.canvas.width, this.canvas.height);
 
 	}
 
@@ -169,9 +171,9 @@ class Graph {
 
 	mouseBindings(canvas) {
 
-		canvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
-		canvas.ondblclick = pdsc(this.mousecontrol, this.mousecontrol.ondblclick);
-		canvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
+		this.onscreenCanvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
+		this.onscreenCanvas.ondblclick = pdsc(this.mousecontrol, this.mousecontrol.ondblclick);
+		this.onscreenCanvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
 
 
 		var that = this;

@@ -77,9 +77,9 @@ class FrequencyGraph extends Graph {
 	}
 
 
-	copyToCanvas() {
+	copyToCanvas(context) {
 
-		super.copyToCanvas();
+		super.copyToCanvas(context);
 
 		this.onscreen3dContext.clearRect(0, 0, this.onscreen3dCanvas.width, this.onscreen3dCanvas.height);
 		this.onscreen3dContext.drawImage(this.canvas3d, 0, 0, this.canvas3d.width, this.canvas3d.height);
