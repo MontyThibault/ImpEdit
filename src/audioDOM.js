@@ -1,7 +1,7 @@
 require('./datguimodifications.js');
 
 
-module.exports = function(audio) {
+module.exports = function(audio, bufferLink) {
 
 
 	var helpbox = document.getElementById('helpbox'),
@@ -31,16 +31,6 @@ module.exports = function(audio) {
 		'Convolution Enabled': true,
 		'Auto-Update': true,
 		'Update Interval': 10,
-
-
-		// We must add or remove the folder.
-
-		// 'Manual Update': function() {
-
-
-
-		// },
-
 		'Normalization Enabled': true,
 		'FFT Enabled': false,
 		'Gain': 0.1,
@@ -81,6 +71,43 @@ module.exports = function(audio) {
 		}
 
 	});
+
+
+	var auC = audioGUI.add(params, 'Auto-Update');
+
+	var uiC = audioGUI.add(params, 'Update Interval', 50, 2000).onChange(function(v) {
+
+		bufferLink.linkObservers(v);
+
+	});
+
+
+	auC.onChange(function(v) {
+
+		if(v) {
+
+			bufferLink.linkObservers();
+			uiC.enable();
+
+		} else {
+
+			bufferLink.unlinkObservers();
+			uiC.disable();
+
+		}
+
+	});
+
+	var manC = audioGUI.add({
+
+		'Manual Update': function() {
+
+			bufferLink.manualUpdate();
+
+		}
+
+	}, 'Manual Update');
+
 
 
 	var normC = audioGUI.add(params, 'Normalization Enabled');
@@ -142,6 +169,9 @@ module.exports = function(audio) {
 	// Defaults
 
 	convC.setValue(convC.getValue());
+	auC.setValue(auC.getValue());
+	uiC.setValue(uiC.getValue());
+	manC.setValue(manC.getValue());
 	normC.setValue(normC.getValue());
 	gainC.setValue(gainC.getValue());
 	fftEnblC.setValue(fftEnblC.getValue());
@@ -151,6 +181,7 @@ module.exports = function(audio) {
 
 
 	// Check for BlobURL support
+
 	var blob = window.URL || window.webkitURL;
 
     if (!blob) {

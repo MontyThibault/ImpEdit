@@ -1,4 +1,4 @@
-module.exports = function(ir, fg, og, hz_editor) {
+module.exports = function(ir, fg, og, hz_editor, audio) {
 
 
 	var gui = new dat.GUI({
@@ -10,6 +10,13 @@ module.exports = function(ir, fg, og, hz_editor) {
 
 	var i = 0;
 
+
+
+	gui.add(fg, 'laplaceEnabled').name('Enable Laplace Viz.').onChange(function() {
+
+		fg.needsUpdate = true;
+
+	});
 
 
 	function addControlPointToGUI(op) {
