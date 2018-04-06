@@ -10,7 +10,9 @@ class IRGraph extends Graph {
 
 		super(onscreenCanvas);
 
-		this.xAxis = new Axis(true, -1, 2, function() { return this.canvas.width; }.bind(this));
+		
+
+		this.xAxis = new Axis(true, 0, 10e-3, function() { return this.canvas.width; }.bind(this));
 		this.yAxis = new Axis(false, 1.5, -1.5, function() { return this.canvas.height; }.bind(this));
 
 		this.initAxes(this.xAxis, this.yAxis);
@@ -24,15 +26,6 @@ class IRGraph extends Graph {
 
 		});
 
-		this.reference.xRef.addSpecialLabel({
-
-			coord: 1,
-			text: 'END',
-			strokeStyle: '#00CC00',
-			dash: [10, 3, 2, 3]
-
-		});
-
 		this.reference.yRef.addSpecialLabel({
 
 			coord: 0,
@@ -43,7 +36,6 @@ class IRGraph extends Graph {
 
 
 		this.editor = new LineEditor(this);
-		this.editor.addControlPoint(0, 0);
 
 		this.vizline = new BufferLine(this.vizIR, 96000);
 
