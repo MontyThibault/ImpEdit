@@ -120,10 +120,10 @@ class Graph {
 	}
 
 
-	setWidthHeight(w, h) {
+	setWidthHeight(w, h) {	
 
-		this.canvas.width = w;
-		this.canvas.height = h;
+		this.canvas.width = w * window.devicePixelRatio;
+		this.canvas.height = h * window.devicePixelRatio;
 
 		this.needsUpdate = true;
 

@@ -66,18 +66,33 @@ window.onresize = function() {
 
 	fg_div.style = 'height: ' + height + 'px; width: ' + halfwidth + 'px;';
 
-	ir_canvas.width = width;
-	ir_canvas.height = height;
+	ir_canvas.width = width * window.devicePixelRatio;
+	ir_canvas.height = height * window.devicePixelRatio;
 
-	fg_canvas2d.width = halfwidth;
-	fg_canvas2d.height = height;
+	ir_canvas.style.width = width + 'px';
+	ir_canvas.style.height = height + 'px';
 
-	fg_canvas3d.width = halfwidth;
-	fg_canvas3d.height = height;
 
-	og_canvas.width = halfwidth;
-	og_canvas.height = height;
-	
+	fg_canvas2d.width = halfwidth * window.devicePixelRatio;
+	fg_canvas2d.height = height * window.devicePixelRatio;
+
+	fg_canvas2d.style.width = halfwidth + 'px';
+	fg_canvas2d.style.height = height + 'px';
+
+
+	fg_canvas3d.width = halfwidth * window.devicePixelRatio;
+	fg_canvas3d.height = height * window.devicePixelRatio;
+
+	fg_canvas3d.style.width = halfwidth + 'px';
+	fg_canvas3d.style.height = height + 'px';
+
+
+	og_canvas.width = halfwidth * window.devicePixelRatio;
+	og_canvas.height = height * window.devicePixelRatio;
+		
+	og_canvas.style.width = halfwidth + 'px';
+	og_canvas.style.height = height + 'px';
+
 
 
 	draw();

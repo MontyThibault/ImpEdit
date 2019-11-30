@@ -100,10 +100,11 @@ class FrequencyGraph extends Graph {
 
 		super.setWidthHeight(w, h);
 
-		this.canvas3d.width = w;
-		this.canvas3d.height = h;
+		this.canvas3d.width = w * window.devicePixelRatio;
+		this.canvas3d.height = h * window.devicePixelRatio;
 
-		this.gl.viewport(0, 0, w, h);
+
+		this.gl.viewport(0, 0, w * window.devicePixelRatio, h * window.devicePixelRatio);
 
 
 	}
