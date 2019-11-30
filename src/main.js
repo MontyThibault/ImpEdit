@@ -161,7 +161,18 @@ totalBuffer.addObserver(function() {
 
 var audio = new Audio();
 
+
+setInterval(() => {
+
+	if(audio.audioContext.state === 'suspended') {
+		audio.audioContext.resume();
+	}
+
+}, 100);
+
+
 var bufferLink = new BufferLink(totalBuffer, audio);
+
 
 
 
