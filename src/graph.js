@@ -53,15 +53,7 @@ function Graph(canvas) {
 	this.yAxisRange.mousecontrol(this.mousecontrol);
 
 
-	canvas.onmousemove = pdsc(this.mousecontrol, 
-		debounce(this.mousecontrol.onmousemove), 1000 / 60);
-
-	canvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
-	canvas.onmouseup = pdsc(this.mousecontrol, this.mousecontrol.onmouseup);
-	canvas.ondblclick = pdsc(this.mousecontrol, this.mousecontrol.ondblclick);
-	canvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
-
-	canvas.onmouseout = canvas.onmouseup;
+	this.mouseBindings();
 
 
 	this.needsUpdate = true;
@@ -130,6 +122,39 @@ Graph.prototype.addControlPoint = function(x, y) {
 	this.lineeditor.addControlPoint(fromX, fromY);
 };
 
+Graph.prototype.mouseBindings = function() {
+
+	this.canvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
+	this.canvas.ondblclick = pdsc(this.mousecontrol, this.mousecontrol.ondblclick);
+	this.canvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
+
+
+	var that = this;
+	document.addEventListener('mousemove', debounce(function(e) {
+
+		var bb = that.canvas.getBoundingClientRect();
+
+		e.clientX -= that.canvas.left;
+		e.clientY -= that.canvas.top;
+
+		that.mousecontrol.onmousemove(e);
+
+	}, 1000 / 60));
+
+
+	document.addEventListener('mouseup', function(e) {
+
+		var bb = that.canvas.getBoundingClientRect();
+
+		e.clientX -= that.canvas.left;
+		e.clientY -= that.canvas.top;
+
+		that.mousecontrol.onmouseup(e);
+
+	});
+
+
+};
 
 
 module.exports = Graph;
