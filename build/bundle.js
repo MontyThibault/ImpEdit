@@ -388,24 +388,10 @@ function Audio() {
 	});
 
 
+
 	this.convolver = this.audioContext.createConvolver();
+	this.convolver.buffer = this.audioContext.createBuffer(1, 96000, this.audioContext.sampleRate);
 
-	// Dirac-Delta 
-	this.convolver.buffer = this.audioContext.createBuffer(2, 10000, this.audioContext.sampleRate);
-	
-	var arr = new Float32Array(this.convolver.buffer.length);
-	
-
-	for(var channel = 0; channel < this.convolver.buffer.numberOfChannels; channel++) {
-
-		for(var i = 0; i < this.convolver.buffer.length; i++) {
-
-			arr[i] = Math.random() * 2 - 1;
-
-		}
-
-		this.convolver.buffer.copyToChannel(arr, channel, 0);
-	}
 
 	this.convolver.loop = false;
 	this.convolver.normalize = true;
@@ -420,26 +406,51 @@ function Audio() {
 }
 
 
+Audio.prototype.update_convolver = function(buffer) {
+
+	// Simply this.convolver.buffer.copyToChannel(this.convolutionBufferArray, 0, 0);
+	// does not work for some reason. 
+
+	var convlutionBuffer = this.convolver.buffer;
+
+	convlutionBuffer.copyToChannel(buffer, 0, 0);
+
+	this.convolver.buffer = convlutionBuffer;
+
+};
+
 
 Audio.prototype.convolve_enable = function() {
+
 	this.convolve = true;
 	this.reconnect();
+
 };
+
 
 Audio.prototype.convolve_disable = function() {
+
 	this.convolve = false;
 	this.reconnect();
+
 };
+
 
 Audio.prototype.fft_enable = function() {
+
 	this.fft = true;
 	this.reconnect();
+
 };
 
+
 Audio.prototype.fft_disable = function() {
+
 	this.fft = false;
 	this.reconnect();
+
 };
+
 
 Audio.prototype.reconnect = function() {
 
@@ -571,8 +582,8 @@ class Axis {
 		this.max = max;
 
 		// Absolute boundaries
-		this.minLimit = -1e2;
-		this.maxLimit = 1e2;
+		this.minLimit = min;
+		this.maxLimit = max;
 
 
 		// returns canvas.width/canvas.height
@@ -585,6 +596,27 @@ class Axis {
 
 		this.min = (this.min > this.minLimit) ? this.min : this.minLimit;
 		this.max = (this.max < this.maxLimit) ? this.max : this.maxLimit;
+
+	}
+
+
+	_fixedWidthLimits() {
+
+		if(this.min < this.minLimit) {
+
+			var diff = this.minLimit - this.min;
+
+			this.min += diff;
+			this.max += diff;
+
+		} else if(this.max > this.maxLimit) {
+
+			var diff = this.max - this.maxLimit;
+
+			this.min -= diff;
+			this.max -= diff;
+
+		}
 
 	}
 
@@ -619,6 +651,48 @@ class Axis {
 	}
 
 
+
+	// Given graph coord, returns numeric value between zero and one for visualization.
+
+	interpolate(p) {
+
+		return this.graphToCanvas(p) / this.get_full_extent();
+
+	}
+
+
+	inverseInterpolate(p) {
+
+		return this.canvasToGraph(p * this.get_full_extent());
+
+	}
+
+
+
+	// Above, but in terms of maxLimit and minLimit
+
+	interpolateGlobal(p) {
+
+		return (this.graphToCanvas(p) - this.graphToCanvas(this.minLimit)) 
+		/ (this.graphToCanvas(this.maxLimit) - this.graphToCanvas(this.minLimit)) 
+
+
+	}
+
+
+	inverseInterpolateGlobal(p) {
+
+		return this.canvasToGraph(
+
+			(p * (this.graphToCanvas(this.maxLimit) - this.graphToCanvas(this.minLimit)))
+			+ this.graphToCanvas(this.minLimit)
+
+			);
+
+	}
+
+
+
 	zoomIn() {
 
 		var min = this.min * 0.9 + this.max * 0.1;
@@ -645,7 +719,7 @@ class Axis {
 	}
 
 
-	panCanvas(diff) {
+	panCanvas(diff, pos) {
 
 		var offset = this.graphToCanvas(this.min);
 
@@ -658,18 +732,10 @@ class Axis {
 
 	panGraph(diff) {
 
-		if(this.min - diff < this.minLimit || 
-			this.max - diff > this.maxLimit) {
-
-			// Boundary border
-			return;
-
-		}
-
 		this.min -= diff;
 		this.max -= diff;
 
-		this._limits();
+		this._fixedWidthLimits();
 
 	}
 
@@ -678,26 +744,30 @@ class Axis {
 
 		if(bound_type === 'min') {
 
-			if(this.min - diff < this.minLimit) {
+			// if(this.min - diff < this.minLimit) {
 
-				return;
+			// 	return;
 
-			}
+			// }
 
 			this.min -= diff;
 
 
+
+
 		} else if(bound_type === 'max') {
 
-			if(this.max - diff > this.maxLimit) {
+			// if(this.max - diff > this.maxLimit) {
 
-				return;
+			// 	return;
 
-			}
+			// }
 
 			this.max -= diff;
 
 		}
+
+		this._limits();
 
 	}
 
@@ -705,7 +775,7 @@ class Axis {
 
 
 module.exports = Axis;
-},{"./rangeslider.js":18}],6:[function(require,module,exports){
+},{"./rangeslider.js":20}],6:[function(require,module,exports){
 class BufferLine {
 
 	constructor(buffer, samplerate) {
@@ -719,6 +789,10 @@ class BufferLine {
 	draw(context, toX, toY) {
 
 		context.beginPath();
+
+		context.strokeStyle = '#CC0000';
+		context.setLineDash([10, 3, 2, 3]);
+
 
 		var sampleStep = 1 / this.samplerate;
 		var pixelsPerSample = toX(sampleStep) - toX(0);
@@ -782,6 +856,7 @@ class BufferLine {
 
 
 		context.stroke();
+		context.setLineDash([]);
 
 	}
 
@@ -790,6 +865,55 @@ class BufferLine {
 
 module.exports = BufferLine;
 },{}],7:[function(require,module,exports){
+var Observable = require('./observable.js');
+
+
+class BufferSum extends Observable {
+
+	constructor(bufferClassA, bufferClassB) {
+
+		super();
+		
+
+		// Here a "bufferClass" is any class that implements
+		// the method toBuffer(buffer, samplerate) and extends
+		// Observable.
+
+		this.bufferClassA = bufferClassA;
+		this.bufferClassB = bufferClassB;
+
+
+		this.bufferClassA.addObserver(this.notifyObservers.bind(this));
+		this.bufferClassB.addObserver(this.notifyObservers.bind(this));
+
+
+		this.buffer = new Float32Array(96000);
+
+		this.addObserver(function() {
+
+			this.toBuffer();
+
+		});
+
+	}
+
+
+
+	toBuffer() {
+
+		for(var i = 0; i < this.buffer.length; i++) {
+
+			this.buffer[i] = this.bufferClassA.buffer[i] + this.bufferClassB.buffer[i];
+
+		}
+
+	}
+
+}
+
+
+module.exports = BufferSum;
+},{"./observable.js":17}],8:[function(require,module,exports){
 function ControlPoint(x, y, editor, graph) {
 
 	this.x = x;
@@ -859,7 +983,7 @@ ControlPoint.prototype.ondblclick = function() {
 
 
 module.exports = ControlPoint;
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 var Graph = require('./graph.js');
 var HzEditor = require('./hzeditor.js');
 var LogAxis = require('./logaxis.js');
@@ -873,12 +997,9 @@ class FrequencyGraph extends Graph {
 
 		super(canvas2d);
 
-		this.xAxis = new Axis(true, 1, 10, function() { return canvas2d.width; });
-		this.yAxis = new LogAxis(false, 10, 10000, function() { return canvas2d.height; });
-
-		this.yAxis.maxLimit = 10000;
-		this.xAxis.minLimit = -100000;
-		this.xAxis.maxLimit = 100000;
+		
+		this.xAxis = new LogAxis(true, 5, 10000, function() { return canvas2d.width; });
+		this.yAxis = new LogAxis(false, 1, 100, function() { return canvas2d.height; });
 
 		this.initAxes(this.xAxis, this.yAxis);
 
@@ -916,9 +1037,14 @@ class FrequencyGraph extends Graph {
 
 		}
 
-		super._drawElements(context, toX, toY);
+		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+		this.reference.draw(context, toX, toY);
 
 		this.hzeditor.draw(context, toX, toY);
+
+		this.xAxisRange.draw(context, toX, toY);
+		this.yAxisRange.draw(context, toX, toY);
 
 	}
 
@@ -1093,8 +1219,8 @@ class FrequencyGraph extends Graph {
 
 					t = float(i) / samplerate;	
 
-					re_sum += exp(graphPosition.x * t) * cos(graphPosition.y * t * 2.0 * pi) * uIR[i];
-					im_sum += exp(graphPosition.x * t) * sin(graphPosition.y * t * 2.0 * pi) * uIR[i];
+					re_sum += exp(graphPosition.y * t) * cos(graphPosition.x * t * 2.0 * pi) * uIR[i];
+					im_sum += exp(graphPosition.y * t) * sin(graphPosition.x * t * 2.0 * pi) * uIR[i];
 
 				}
 
@@ -1293,13 +1419,6 @@ class FrequencyGraph extends Graph {
 	}
 
 
-	getIR(buffer, samplerate) {
-
-		this.hzeditor.toBuffer(buffer, samplerate);
-
-	}
-
-
 	addControlPoint(x, y) {
 
 		var fromX = this.xAxis.canvasToGraph(x),
@@ -1315,7 +1434,7 @@ class FrequencyGraph extends Graph {
 
 module.exports = FrequencyGraph;
 
-},{"./axis.js":5,"./graph.js":9,"./hzeditor.js":10,"./logaxis.js":13}],9:[function(require,module,exports){
+},{"./axis.js":5,"./graph.js":10,"./hzeditor.js":11,"./logaxis.js":14}],10:[function(require,module,exports){
 var MouseControl = require('./mousecontrol.js');
 var ReferenceLines = require('./referencelines.js');
 var RangeSlider = require('./rangeslider.js');
@@ -1388,7 +1507,6 @@ class Graph {
 
 		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-
 		this.reference.draw(context, toX, toY);
 
 		this.xAxisRange.draw(context, toX, toY);
@@ -1432,10 +1550,10 @@ class Graph {
 		this.needsUpdate = true;
 	}
 
-	pan(diffX, diffY) {
+	pan(diffX, diffY, posX, posY) {
 
-		this.xAxis.panCanvas(diffX);
-		this.yAxis.panCanvas(diffY);
+		this.xAxis.panCanvas(diffX, posX);
+		this.yAxis.panCanvas(diffY, posY);
 
 		this.needsUpdate = true;
 	}
@@ -1467,16 +1585,32 @@ class Graph {
 }
 
 module.exports = Graph;
-},{"./mousecontrol.js":15,"./rangeslider.js":18,"./referencelines.js":19}],10:[function(require,module,exports){
+},{"./mousecontrol.js":16,"./rangeslider.js":20,"./referencelines.js":21}],11:[function(require,module,exports){
 var PointEditor = require('./pointeditor.js');
 
 
 class HzEditor extends PointEditor {
 
+	constructor(graph) {
+
+		super(graph);
+
+
+		this.buffer = new Float32Array(96000);
+		this.samplerate = 96000;
+
+		this.addObserver(function() {
+
+			this.toBuffer();
+
+		});
+
+	}
+
 
 	toBuffer(buffer, samplerate) {
 
-		buffer.fill(0);
+		this.buffer.fill(0);
 
 
 		for(var i = 0; i < this.controlpoints.length; i++) {
@@ -1484,13 +1618,13 @@ class HzEditor extends PointEditor {
 			var cp = this.controlpoints[i];
 
 
-			for(var j = 0; j < buffer.length; j++) {
+			for(var j = 0; j < this.buffer.length; j++) {
 
-				var t = j / samplerate;
+				var t = j / this.samplerate;
 
-				buffer[j] += Math.cos(cp.y * t * 2 * Math.PI) * Math.exp(cp.x * t);
+				this.buffer[j] += Math.cos(cp.x * t * 2 * Math.PI) * Math.exp(cp.y * t);
 
-				// Imaginary: += Math.sin(cp.y * t * 2 * Math.PI) * Math.exp(cp.x * t);
+				// Imaginary: += Math.sin(cp.x * t * 2 * Math.PI) * Math.exp(cp.y * t);
 
 			}
 
@@ -1502,7 +1636,7 @@ class HzEditor extends PointEditor {
 
 
 module.exports = HzEditor;
-},{"./pointeditor.js":16}],11:[function(require,module,exports){
+},{"./pointeditor.js":18}],12:[function(require,module,exports){
 var Graph = require('./graph.js');
 var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
@@ -1515,14 +1649,14 @@ class IRGraph extends Graph {
 
 		super(canvas);
 
-		this.xAxis = new Axis(true, -5, 5, function() { return canvas.width; });
-		this.yAxis = new Axis(false, -5, 5, function() { return canvas.height; });
+		this.xAxis = new Axis(true, -1, 2, function() { return canvas.width; });
+		this.yAxis = new Axis(false, -1.5, 1.5, function() { return canvas.height; });
 
 		this.initAxes(this.xAxis, this.yAxis);
 
 
 		this.reference.xRef.specialLabels.push([0, 'Y (Waveform)', '#0000FF']);
-		this.reference.xRef.specialLabels.push([5, 'END', '#00CC00', [10, 3, 2, 3]]);
+		this.reference.xRef.specialLabels.push([1, 'END', '#00CC00', [10, 3, 2, 3]]);
 		this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
 
 		this.lineeditor = new LineEditor(this);
@@ -1535,12 +1669,16 @@ class IRGraph extends Graph {
 
 	_drawElements(context, toX, toY) {
 
-		super._drawElements(context, toX, toY);
+		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+		this.reference.draw(context, toX, toY);
 
 		this.lineeditor.draw(context, toX, toY);
 
-
 		this.vizline.draw(context, toX, toY);
+
+		this.xAxisRange.draw(context, toX, toY);
+		this.yAxisRange.draw(context, toX, toY);
 
 	}
 
@@ -1572,7 +1710,7 @@ class IRGraph extends Graph {
 
 
 module.exports = IRGraph;
-},{"./axis.js":5,"./bufferline.js":6,"./graph.js":9,"./lineeditor.js":12}],12:[function(require,module,exports){
+},{"./axis.js":5,"./bufferline.js":6,"./graph.js":10,"./lineeditor.js":13}],13:[function(require,module,exports){
 var PointEditor = require('./pointeditor.js');
 var PointLine = require('./pointline.js');
 
@@ -1586,6 +1724,17 @@ class LineEditor extends PointEditor {
 
 		this.pointLine = new PointLine();
 		this.pointLine.points = this.controlpoints;
+
+
+
+		this.buffer = new Float32Array(96000);
+		this.samplerate = 96000;
+
+		this.addObserver(function() {
+
+			this.toBuffer();
+
+		});
 
 	}
 
@@ -1601,18 +1750,22 @@ class LineEditor extends PointEditor {
 
 	addControlPoint(x, y) {
 
-		super.addControlPoint(x, y);
+		super._addControlPointNoUpdate(x, y);
 
 		this.sort();
+
+		this.notifyObservers();
 
 	}
 
 
 	removeControlPoint(o) {
 
-		super.removeControlPoint(o);
+		super._removeControlPointNoUpdate(o);
 
 		this.sort();
+
+		this.notifyObservers();
 
 	}
 
@@ -1630,30 +1783,37 @@ class LineEditor extends PointEditor {
 
 		this.sort();
 
+		this.notifyObservers();
+
 	}
 
 
-	toBuffer(buffer, samplerate) {
+	toBuffer() {
 
 		// We assume this.graph.xAxis is calibrated to seconds.
 
+		this.buffer.fill(0);
+
 		if(this.controlpoints.length < 2) {
-			buffer.fill(0);
+
 			return;
+
 		}
 
 
 		// cp1 is the control point directly before the current point
 		// cp2 is the control point directly after the current point
+
 		var cp1 = this.controlpoints[0],
 			cp2 = this.controlpoints[1];
 
 		var cpi = 1;
 		var escape = false;
+		
 
-		for(var i = 0; i < buffer.length; i++) {
+		for(var i = 0; i < this.buffer.length; i++) {
 
-			var time = i / samplerate;
+			var time = i / this.samplerate;
 
 
 			while(time > cp2.x) {
@@ -1663,7 +1823,7 @@ class LineEditor extends PointEditor {
 				// If this point is beyond all control points.
 				if(cpi  === this.controlpoints.length) {
 					cpi--;
-					buffer[i] = 0;
+					this.buffer[i] = 0;
 
 					escape = true;
 					break;
@@ -1682,14 +1842,14 @@ class LineEditor extends PointEditor {
 	 		
 	 		// If this point is before all control points.
 			if(time < cp1.x) {
-				buffer[i] = 0;
+				this.buffer[i] = 0;
 				continue;
 			}
 
 
 			var slope = (cp2.y - cp1.y) / (cp2.x - cp1.x);
 			
-			buffer[i] = cp1.y + (time - cp1.x) * slope;
+			this.buffer[i] = cp1.y + (time - cp1.x) * slope;
 
 		}
 
@@ -1700,7 +1860,7 @@ class LineEditor extends PointEditor {
 
 module.exports = LineEditor;
 
-},{"./pointeditor.js":16,"./pointline.js":17}],13:[function(require,module,exports){
+},{"./pointeditor.js":18,"./pointline.js":19}],14:[function(require,module,exports){
 var Axis = require('./axis.js');
 
 
@@ -1711,8 +1871,25 @@ class LogAxis extends Axis {
 
 		super(orientation, min, max, get_full_extent);
 
-		this.minLimit = 1;
-		this.maxLimit = 10;
+
+		if(min < 0 && max < 0) {
+
+			this.min = -min;
+			this.max = -max;
+
+			this.sign = -1;
+
+
+		} else if(this.min > 0 && this.max > 0) {
+
+			this.sign = 1;
+
+		} else {
+
+			alert("Invalid logarithmic axis bounds.");
+
+		}
+
 
 		this.type = 1;
 
@@ -1720,6 +1897,8 @@ class LogAxis extends Axis {
 
 
 	graphToCanvas(p) {
+
+		p *= this.sign;
 
 		var lmin = Math.log(this.min),
 			lmax = Math.log(this.max);
@@ -1736,7 +1915,7 @@ class LogAxis extends Axis {
 			lmax = Math.log(this.max);
 
 		var ldiff = lmax - lmin;
-		return Math.exp((p / this.get_full_extent()) * ldiff + lmin);
+		return Math.exp((p / this.get_full_extent()) * ldiff + lmin) * this.sign;
 
 	}
 
@@ -1768,17 +1947,65 @@ class LogAxis extends Axis {
 
 	}
 
+
+
+	zoomIn() {
+
+
+		var cMin = 0,
+			cMax = this.get_full_extent();
+
+		var min = cMin * 0.9 + cMax * 0.1,
+			max = cMin * 0.1 + cMax * 0.9;
+
+		this.min = this.canvasToGraph(min);
+		this.max = this.canvasToGraph(max);
+
+		this._limits();
+
+	}
+
+
+	zoomOut() {
+
+
+		var cMin = 0,
+			cMax = this.get_full_extent();
+
+		var min = cMin * 1.125 + cMax * -0.125,
+			max = cMin * -0.125 + cMax * 1.125;
+
+		this.min = this.canvasToGraph(min);
+		this.max = this.canvasToGraph(max);
+
+		this._limits();
+
+	}
+
+
+	panCanvas(diff, pos) {
+
+
+		// Improve this so we have sticky mouse behavior
+
+		var pan = this.canvasToGraphInterval(pos, diff);
+
+		this.panGraph(pan);
+
+	}
+
 }
 
 
 module.exports = LogAxis;
-},{"./axis.js":5}],14:[function(require,module,exports){
+},{"./axis.js":5}],15:[function(require,module,exports){
 
 
 var IRGraph = require("./irgraph.js");
 var FrequencyGraph = require("./frequencygraph.js");
 var Audio = require("./audio.js");
 var attachAudioDOM = require("./audioDOM.js");
+var BufferSum = require('./buffersum.js');
 
 
 var ir_canvas = document.getElementById('ir_graph');
@@ -1809,7 +2036,6 @@ window.onresize = function() {
 
 	hz_div.style = 'height: 500px';
 
-
 	hz.needsUpdate = true;
 
 	hz.gl.viewport(0, 0, hz_canvas3d.width, hz_canvas3d.height);
@@ -1820,20 +2046,55 @@ window.onresize = function() {
 
 
 
-var irBuffer = new Float32Array(1000);
-hz.setVizIR(irBuffer);
 
-var hzBuffer = new Float32Array(1000);
-ir.setVizIR(hzBuffer);
 
+
+var totalBuffer = new BufferSum(hz.hzeditor, ir.lineeditor);
+
+ir.setVizIR(totalBuffer.buffer);
+hz.setVizIR(totalBuffer.buffer);
+
+
+//////////////////////////
+
+
+var audio = new Audio();
+attachAudioDOM(audio);
+
+
+
+function debounce(f, delay) {
+  var timer = null;
+
+  return function () {
+    var context = this, 
+    	args = arguments;
+
+    clearTimeout(timer);
+
+    timer = setTimeout(function () {
+      f.apply(context, args);
+    }, delay);
+  };
+}
+
+
+
+
+totalBuffer.addObserver(debounce(function() {
+
+	audio.update_convolver(this.buffer);
+
+}, 1000));
+
+
+
+var m = 0;
 
 function draw() {
 
 	requestAnimationFrame(draw);
 
-
-	ir.getIR(irBuffer, 96000);
-	hz.getIR(hzBuffer, 96000);
 
 	ir.needsUpdate = hz.needsUpdate = ir.needsUpdate || hz.needsUpdate;
 
@@ -1851,10 +2112,8 @@ window.onresize();
 
 
 
-var audio = new Audio();
-attachAudioDOM(audio);
 
-},{"./audio.js":3,"./audioDOM.js":4,"./frequencygraph.js":8,"./irgraph.js":11}],15:[function(require,module,exports){
+},{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./frequencygraph.js":9,"./irgraph.js":12}],16:[function(require,module,exports){
 
 function debounce(f, delay) {
   var timer = null;
@@ -1891,11 +2150,15 @@ function MouseControl(graph) {
 
 
 MouseControl.prototype._getX = function(e) {
+
 	return e.clientX - this.graph.canvas.getBoundingClientRect().left;
+
 };
 
 MouseControl.prototype._getY = function(e) {
+
 	return e.clientY - this.graph.canvas.getBoundingClientRect().top;
+	
 };
 
 
@@ -1960,6 +2223,7 @@ MouseControl.prototype.removeObject = function(o) {
 	if(i > -1) {
 		this.objects.splice(i, 1);
 	}
+	
 };
 
 
@@ -1980,7 +2244,7 @@ MouseControl.prototype.onmousemove = function(e) {
 		var x = this._getX(e);
 		var y = this._getY(e);
 
-		this.graph.pan(x - this.oldClientX, y - this.oldClientY);
+		this.graph.pan(x - this.oldClientX, y - this.oldClientY, x, y);
 
 		this.oldClientX = x;
 		this.oldClientY = y;
@@ -2038,13 +2302,59 @@ MouseControl.prototype.onscroll = function(e) {
 
 
 module.exports = MouseControl; // Singleton
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
+
+class Observable {
+
+	constructor() {
+
+		this.observers = [];
+
+	}
+
+
+	addObserver(f) {
+
+		this.observers.push(f);
+
+	}
+
+
+	removeObserver(f) {
+
+		var i = this.observers.indexOf(f);
+
+		if(i > -1) {
+			this.observers.splice(i, 1);
+		}
+
+	}
+
+
+	notifyObservers() {
+
+		for(var i = 0; i < this.observers.length; i++) {
+
+			this.observers[i].call(this);
+
+		}
+
+	}
+
+}
+
+
+module.exports = Observable;
+},{}],18:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
+var Observable = require('./observable.js');
 
 
-class PointEditor {
+class PointEditor extends Observable {
 
 	constructor(graph) {
+
+		super();
 
 		this.controlpoints = [];
 
@@ -2056,24 +2366,34 @@ class PointEditor {
 	draw(context, toX, toY) {
 
 		for(var i = 0; i < this.controlpoints.length; i++) {
+
 			this.controlpoints[i].draw(context, toX, toY);
+
 		}
 
 	}
 
 
-	addControlPoint(x, y) {
+	_addControlPointNoUpdate(x, y) {
 
 		var cp = new ControlPoint(x, y, this, this.graph);
 
 		this.controlpoints.push(cp);
 		this.graph.mousecontrol.addObject(cp);
 
+	}
+
+
+	addControlPoint(x, y) {
+
+		this._addControlPointNoUpdate(x, y);
+
+		this.notifyObservers();
 
 	}
 
 
-	removeControlPoint(o) {
+	_removeControlPointNoUpdate(o) {
 
 		this.graph.mousecontrol.removeObject(o);
 
@@ -2085,10 +2405,18 @@ class PointEditor {
 
 	}
 
+	removeControlPoint(o) {
+
+		this._removeControlPointNoUpdate(o);
+
+		this.notifyObservers();
+
+	}
+
 
 	onPointMove() {
 
-		
+		this.notifyObservers();
 		
 	}
 
@@ -2096,7 +2424,7 @@ class PointEditor {
 
 
 module.exports = PointEditor;
-},{"./controlpoint.js":7}],17:[function(require,module,exports){
+},{"./controlpoint.js":8,"./observable.js":17}],19:[function(require,module,exports){
 function PointLine() {
 
 	this.points = [];
@@ -2122,7 +2450,7 @@ PointLine.prototype.draw = function(context, toX, toY) {
 
 
 module.exports = PointLine;
-},{}],18:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 // Throughout this class, p refers to "principal" and s refers to
 // "secondary", as a generic version of x/y or y/x, depending on the orientation.
 
@@ -2225,20 +2553,26 @@ CornerDraggable.prototype.ondrag = function(x, y) {
 
 
 		if(this.parent.axis.orientation) {
-			var dp = x - this.prevDragX;
+
+			var dp = x - this.prevDragX,
+				p = x;
+
 		} else {
-			var dp = y - this.prevDragY;
+
+			var dp = y - this.prevDragY,
+				p = y;
+
 		}
 
 
-		var visualDiff = this.parent.maxP - this.parent.minP,
-			graphDiff = this.parent.axis.maxLimit - this.parent.axis.minLimit;
+		// convertSliderToCanvas
 
 
-		// dx / visualDiff = m / graphDiff
-		var m = -graphDiff * dp / visualDiff;
 
-		this.parent.axis.panGraphMinMax(m, this.bound_type);
+
+		var graphDistance = this.parent.axis.canvasToGraphInterval(p, dp);
+
+		this.parent.axis.panGraphMinMax(-2 * graphDistance, this.bound_type);
 
 	}
 
@@ -2320,9 +2654,42 @@ RangeSlider.prototype._drawBB = function(context, toX, toY) {
 
 	// These parameters provide padding from the canvas boundaries to the
 	// computed mins and maxes. i.e. min is inset 20px from the extreme left.
+
 	this.minP = this.bb_side_padding,
 	this.maxP = toP(this.axis.max) - this.bb_side_padding;
 	this.midS = toS(this.saxis.max) - (this.bb_height / 2);
+
+};
+
+
+RangeSlider.prototype.graphToSlider = function(p) {
+
+	var diff = this.maxP - this.minP;
+
+	return this.minP + this.axis.interpolateGlobal(p) * diff;
+
+};
+
+
+RangeSlider.prototype.sliderToGraph = function(p) {
+
+	var diff = this.maxP - this.minP;
+
+	return this.axis.interpolateGlobalInverse((p - this.minP) / diff);
+
+};
+
+
+RangeSlider.prototype.canvasToSlider = function(p) {
+
+	return this.graphToSlider(this.axis.canvasToGraph(p));
+
+};
+
+
+RangeSlider.prototype.sliderToCanvas = function(p) {
+
+	return this.axis.graphToCanvas(this.sliderToGraph(p));
 
 };
 
@@ -2334,10 +2701,7 @@ RangeSlider.prototype._drawSpecialLines = function(context, toX, toY) {
 		var sl = this.specialLabels[i];
 
 
-		var diff = this.maxP - this.minP;
-
-		var p = this.minP + ((sl[0] - this.axis.minLimit) / 
-			(this.axis.maxLimit - this.axis.minLimit) * diff);
+		var p = this.graphToSlider(sl[0]);
 
 
 		context.beginPath();
@@ -2384,13 +2748,8 @@ RangeSlider.prototype._drawSpecialLines = function(context, toX, toY) {
 RangeSlider.prototype._recomputeStartEndP = function() {
 
 
-	var diff = this.maxP - this.minP;
-
-	this.startP = this.minP + ((this.axis.min - this.axis.minLimit) / 
-		(this.axis.maxLimit - this.axis.minLimit) * diff),
-
-	this.endP = this.minP + ((this.axis.max  - this.axis.minLimit) / 
-		(this.axis.maxLimit - this.axis.minLimit) * diff);
+	this.startP = this.graphToSlider(this.axis.min);
+	this.endP = this.graphToSlider(this.axis.max);
 
 
 	// Circles should not overlap
@@ -2505,6 +2864,10 @@ RangeSlider.prototype.ondrag = function(x, y) {
 		} else {
 			var dp = y - this.prevDragY;
 		}
+
+
+		// Revise here
+		// Consider updating both corner draggables
 
 
 		var visualDiff = this.maxP - this.minP,
@@ -2622,7 +2985,7 @@ RangeSlider.prototype._updateCornerColors = function() {
 
 module.exports = RangeSlider;
 
-},{}],19:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 var ReferenceLinesAxis = require('./referencelinesaxis.js');
 
 
@@ -2738,7 +3101,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
 module.exports = ReferenceLines;
-},{"./referencelinesaxis.js":20}],20:[function(require,module,exports){
+},{"./referencelinesaxis.js":22}],22:[function(require,module,exports){
 
 
 function ReferenceLinesAxis(principal_axis, secondary_axis) {
@@ -3054,4 +3417,4 @@ ReferenceLinesAxis.prototype.drawSpecialLabels = function(context, toX, toY) {
 
 
 module.exports = ReferenceLinesAxis;
-},{}]},{},[14]);
+},{}]},{},[15]);

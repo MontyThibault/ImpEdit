@@ -11,12 +11,9 @@ class FrequencyGraph extends Graph {
 
 		super(canvas2d);
 
-		this.xAxis = new Axis(true, 1, 10, function() { return canvas2d.width; });
-		this.yAxis = new LogAxis(false, 10, 10000, function() { return canvas2d.height; });
-
-		this.yAxis.maxLimit = 10000;
-		this.xAxis.minLimit = -100000;
-		this.xAxis.maxLimit = 100000;
+		
+		this.xAxis = new LogAxis(true, 5, 10000, function() { return canvas2d.width; });
+		this.yAxis = new LogAxis(false, 1, 100, function() { return canvas2d.height; });
 
 		this.initAxes(this.xAxis, this.yAxis);
 
@@ -54,9 +51,14 @@ class FrequencyGraph extends Graph {
 
 		}
 
-		super._drawElements(context, toX, toY);
+		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+		this.reference.draw(context, toX, toY);
 
 		this.hzeditor.draw(context, toX, toY);
+
+		this.xAxisRange.draw(context, toX, toY);
+		this.yAxisRange.draw(context, toX, toY);
 
 	}
 
@@ -231,8 +233,8 @@ class FrequencyGraph extends Graph {
 
 					t = float(i) / samplerate;	
 
-					re_sum += exp(graphPosition.x * t) * cos(graphPosition.y * t * 2.0 * pi) * uIR[i];
-					im_sum += exp(graphPosition.x * t) * sin(graphPosition.y * t * 2.0 * pi) * uIR[i];
+					re_sum += exp(graphPosition.y * t) * cos(graphPosition.x * t * 2.0 * pi) * uIR[i];
+					im_sum += exp(graphPosition.y * t) * sin(graphPosition.x * t * 2.0 * pi) * uIR[i];
 
 				}
 
@@ -427,13 +429,6 @@ class FrequencyGraph extends Graph {
 		}
 
 		return s;
-
-	}
-
-
-	getIR(buffer, samplerate) {
-
-		this.hzeditor.toBuffer(buffer, samplerate);
 
 	}
 

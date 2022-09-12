@@ -2,30 +2,49 @@ To do:
 
 
 -> Log scaling in hand slider
--> Fix labels
--> Implement log coloring in webGL script
+-> Fix negative axis scaling bug (insert Math.abs's)
+-> Fix negative log scaling bug
 
--> vizIR sum
+
+
+-> Implement log coloring in webGL script
 
 
 -> n-pixel padding
+
+
+-> Fix clicking bug with FFT (didn't work first time...)
+
+-> Do something about variable buffer length
+
+
+////////
+// End of weekend goals
+
+
+-> Add a "convert to IR" button that destroys oscillators
+-> Implement axial scaling for oscillator phase and magnitude
+
+-> Graphical table to edit oscillator values
+
+-> Consider spline interpolation on the line
+
+
+
 -> Waveform scrubber
 
--> Implement axial scaling
-
+-> Revise needsUpdate hack to make more efficient
 
 
 Convert to classes
 Change buffer size; automatically recompile shaders
 
-UI improvements
 
--> Fix negative axis scaling bug (insert Math.abs's)
+
 
 
 
 FFT EQ (this should be very easy)
 
-Hook up convolver with graph editor (convolver currently doesn't work for an unknown reason)
-Fix clicking bug with FFT (didn't work first time...)
+
 Choppy canvas animation? Don't know why...
