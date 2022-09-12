@@ -9,9 +9,6 @@ var attachAudioDOM = require("./audioDOM.js");
 var BufferSum = require('./buffersum.js');
 
 
-
-
-
 var HzEditor = require('./hzeditor.js');
 
 var ir_canvas = document.getElementById('ir_graph');
@@ -159,8 +156,8 @@ window.onfocus = window.onresize;
 
 
 
-////////////////////////
 
+/////////////////
 
 dat.GUI.prototype.removeFolder = function(name) {
 
@@ -183,8 +180,6 @@ dat.GUI.prototype.removeFolder = function(name) {
 
 
 var gui = new dat.GUI();
-
-
 
 
 var i = 0;
@@ -270,7 +265,6 @@ function amendAddControlPoint(graph) {
 
 }
 
-amendAddControlPoint(ir);
 amendAddControlPoint(fg);
 amendAddControlPoint(og);
 
@@ -284,3 +278,20 @@ hz_editor.removeControlPoint = function(op) {
 	f.call(hz_editor, op);
 
 };
+
+
+
+/////////////////////////
+
+
+
+var gui2 = new dat.GUI();
+
+
+// Overwrite dat.GUI close button position
+// By default set to absolute (not sure why...) and messes with floating.
+
+var style = document.createElement('style');
+document.head.appendChild(style);
+
+style.sheet.insertRule('.dg.main .close-button.close-bottom { position: static; }');
