@@ -1,15 +1,122 @@
+require('./datguimodifications.js');
+
+
 module.exports = function(audio) {
 
-	var convolution_enabled = document.getElementById('convolution_enabled'),
-		fft_enabled = document.getElementById('fft_enabled'),
-		range_label = document.getElementById('range_label'),
-		range_slider = document.getElementById('range_slider'),
-		normalization_enabled = document.getElementById('normalization_enabled'),
-		gain_label = document.getElementById('gain_label'),
-		gain_slider = document.getElementById('gain_slider');
+	var file_input = document.createElement('input');
+	file_input.setAttribute('type', 'file');
 
 
-	var audio_file = document.getElementById('audio_file');
+	var params = {
+
+		'Convolution Enabled': true,
+		'Normalization Enabled': true,
+		'FFT Enabled': false,
+		'Gain': 0.1,
+		'FFT Frequency': 1000
+
+	};
+
+
+
+	var audioGUI = new dat.GUI({
+
+		width: 300
+
+	});
+
+
+	audioGUI.add({
+
+		'Choose File': function() {
+
+			file_input.click();
+
+		}
+
+	}, 'Choose File');
+
+
+	var convC = audioGUI.add(params, 'Convolution Enabled').onChange(function(v) {
+
+		if(v) {
+
+			audio.convolveEnable();
+
+		} else {
+
+			audio.convolveDisable();
+
+		}
+
+	});
+
+
+	var normC = audioGUI.add(params, 'Normalization Enabled');
+
+	var gainC = audioGUI.add(params, 'Gain', 0.001, 1).onChange(function(v) {
+
+		audio.gainNode.gain.value = v;
+
+	});
+
+	gainC.log = true;
+
+
+	normC.onChange(function(v) {
+
+		if(v) {
+
+			audio.normalizationEnable();
+			gainC.disable();
+
+		} else {
+
+			audio.normalizationDisable();
+			gainC.enable();
+
+		}
+
+	});
+
+
+	var fftEnblC = audioGUI.add(params, 'FFT Enabled');
+
+	var fftFreqC = audioGUI.add(params, 'FFT Frequency', 100, 10000).onChange(function(v) {
+
+		audio.lowpass_cutoff = v;
+	
+	});
+
+	fftFreqC.log = true;
+
+
+	fftEnblC.onChange(function(v) {
+
+		if(v) {
+
+			audio.fftEnable();
+			fftFreqC.enable();
+
+		} else {
+
+			audio.fftDisable();
+			fftFreqC.disable();
+
+		}
+
+	});
+
+
+	// Defaults
+
+	convC.setValue(convC.getValue());
+	normC.setValue(normC.getValue());
+	gainC.setValue(gainC.getValue());
+	fftEnblC.setValue(fftEnblC.getValue());
+	fftFreqC.setValue(fftFreqC.getValue());
+
+
 
 
 	// Check for BlobURL support
@@ -21,120 +128,17 @@ module.exports = function(audio) {
     } 
 
 
-	convolution_enabled.onclick = function(e) {
-
-		if(convolution_enabled.checked) {
-
-			audio.convolveEnable();
-		
-		} else {
-
-			audio.convolveDisable();
-
-		}
-
-	};
-
-
-	fft_enabled.onclick = function(e) {
-
-		if(fft_enabled.checked) {
-
-			audio.fftEnable();
-			range_label.style.visibility = "visible";
-			range_slider.style.visibility = "visible";
-		
-		} else {
-
-			audio.fftDisable();
-			range_label.style.visibility = "hidden";
-			range_slider.style.visibility = "hidden";
-
-		}
-
-	};
-
-
-	normalization_enabled.onclick = function(e) {
-
-		if(normalization_enabled.checked) {
-
-			audio.normalizationEnable();
-			gain_label.style.visibility = "hidden";
-			gain_slider.style.visibility = "hidden";
-
-		} else {
-
-			audio.normalizationDisable();
-			gain_label.style.visibility = "visible";
-			gain_slider.style.visibility = "visible";
-
-		}
-
-	};
-
-
-	var range_min = 20;
-	var range_max = 20000;
-
-	var range_log_base = 10;
-
-	range_slider.min = Math.log(range_min) / Math.log(range_log_base);
-	range_slider.max = Math.log(range_max) / Math.log(range_log_base);
-
-	range_slider.oninput = function() {
-
-		var n = Math.floor(Math.pow(range_log_base, this.value));
-
-		range_label.innerHTML = n + ' Hz';
-		audio.lowpass_cutoff = n;
-
-	};
-
-	range_slider.value = (Math.log(range_min) + Math.log(range_max)) 
-			/ (2 * Math.log(range_log_base));
-	range_slider.oninput();
-
-
-
-	gain_slider.oninput = function() {
-
-		audio.gainNode.gain.value = Number(this.value);
-
-		gain_label.innerHTML = 'Gain: ' + this.value;
-
-	};
-
 
 	// http://jsfiddle.net/adamazad/0oy5moph/
-	audio_file.onchange = function(e) {
+	file_input.onchange = function(e) {
 
-		var file =  audio_file.files[0];
+		var file =  file_input.files[0];
 		var fileURL = blob.createObjectURL(file);
 
 		var myAudio = document.querySelector('audio');
 		myAudio.src = fileURL;
 
 	};
-
-
-
-
-
-
-	// Defaults
-
-	normalization_enabled.checked = true;
-	normalization_enabled.onclick();
-
-	convolution_enabled.checked = false;
-	convolution_enabled.onclick();
-
-	fft_enabled.checked = false;
-	fft_enabled.onclick();
-
-	gain_slider.value = 1;
-	gain_slider.oninput();
 
 
 };

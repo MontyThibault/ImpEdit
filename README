@@ -1,17 +1,27 @@
 To do:
 
--> Set buffer to dirac-delta by default
 
--> Add disable button
--> Disable listeners button
+
+-> Fix frequency input precision
 
 -> Fix clicking bug with FFT (didn't work first time...)
 
--> Play pure tone button
--> Increase controls width
+
+
+
+-> dat.gui log scale
+
+-> Lines not drawing on scrollbar
+
+/////////////////////////
+
 
 
 -> Delegate Laplace rendering to seperate webworker
+-> Delegate normal rendering to seperate webworker
+-> Delegate web audio to seperate webworker
+
+
 -> Implement axial scaling
 -> Variable buffer length
 -> Code review

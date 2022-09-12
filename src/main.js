@@ -79,6 +79,7 @@ ir.setVizIR(totalBuffer.buffer);
 fg.setVizIR(totalBuffer.buffer);
 
 
+
 //////////////////////////
 
 
@@ -112,11 +113,26 @@ function throttle(fn, threshhold, scope) {
 
 
 
+
+totalBuffer.addObserver(function() {
+
+	// Dirac-delta
+	this.buffer[0] = 1;
+
+});
+
+
 totalBuffer.addObserver(throttle(function() {
 
 	audio.updateConvolver(this.buffer);
 
 }, 200));
+
+
+// Prepare default buffer.
+
+totalBuffer.notifyObservers();
+
 
 
 totalBuffer.addObserver(function() {
@@ -159,30 +175,17 @@ window.onfocus = window.onresize;
 
 /////////////////
 
-dat.GUI.prototype.removeFolder = function(name) {
-
-  var folder = this.__folders[name];
 
 
-  if (!folder) {
+var gui = new dat.GUI({
 
-    return;
+	width: 480
 
-  }
-
-  folder.close();
-
-  this.__ul.removeChild(folder.domElement.parentNode);
-  delete this.__folders[name];
-  this.onResize();
-
-}
-
-
-var gui = new dat.GUI();
+});
 
 
 var i = 0;
+
 
 
 function addControlPointToGUI(op) {
@@ -192,10 +195,27 @@ function addControlPointToGUI(op) {
 	var op = op || hz_editor.addControlPointDefault();
 	op.fname = f.name;
 
-	f.add(op.cp, 'x', fg.xAxis.minLimit, fg.xAxis.maxLimit).name('Frequency').listen();
-	f.add(op.cp, 'y', fg.yAxis.minLimit, fg.yAxis.maxLimit).name('Damping').listen();
-	f.add(op.cp0, 'x', og.xAxis.minLimit, og.xAxis.maxLimit).name('Phase').listen();
-	f.add(op.cp0, 'y', og.yAxis.minLimit, og.yAxis.maxLimit).name('Amplitude').listen();
+
+
+	f.sendFreqToBufferOverride = false;
+
+
+	var freqC = f.add(op.cp, 'x', fg.xAxis.minLimit, fg.xAxis.maxLimit)
+		.onChange(function(v) {
+
+		if(f.sendFreqToBufferOverride) {
+
+			audio.oscillatorNode.frequency.value = v;
+
+		}
+
+	}).name('Frequency');
+	freqC.log = true;
+	freqC.updateDisplay();
+
+	var dampC = f.add(op.cp, 'y', fg.yAxis.minLimit, fg.yAxis.maxLimit).name('Damping');
+	var phaseC = f.add(op.cp0, 'x', og.xAxis.minLimit, og.xAxis.maxLimit).name('Phase');
+	var ampC = f.add(op.cp0, 'y', og.yAxis.minLimit, og.yAxis.maxLimit).name('Amplitude');
 
 
 	f.addColor(op.cp, 'nonactiveColor').onChange(function(value) {
@@ -212,11 +232,39 @@ function addControlPointToGUI(op) {
 	}).name('Color').listen();
 
 
+
+	// These are broken in the event that the cp0 value is changed from
+	// elsewhere than this GUI.
+
 	f.add(op.cp, 'outline').onChange(function(value) {
 
 		op.cp0.outline = value;
 
-	}).name('Outline').listen();
+	}).name('Outline');
+
+
+	f.add(op, 'disabled').name('Disable');
+
+
+	f.add({
+
+		'Toggle Tone': false
+
+
+	}, 'Toggle Tone').onChange(function(value) {
+
+
+		f.sendFreqToBufferOverride = value;
+		audio.oscillatorOverride = value;
+		audio.reconnect();
+
+
+		// Propagate change to buffer override (see freqC controller above)
+
+		freqC.setValue(freqC.getValue());
+
+
+	});
 
 
 	f.onChange(function() {
@@ -224,6 +272,14 @@ function addControlPointToGUI(op) {
 		hz_editor.notifyObservers();
 
 	});
+
+
+	f.onFinishChange(function() {
+
+		hz_editor.notifyObservers();
+
+	});
+
 
 
 	f.add({
@@ -236,7 +292,20 @@ function addControlPointToGUI(op) {
 
 	}, 'removePoint').name('Remove Control Point');
 
+
 }
+
+
+hz_editor.addObserver(function() {
+
+	for(var i in gui.__folders) {
+
+		gui.__folders[i].updateDisplay();
+
+	}
+
+});
+
 
 
 gui.add({
@@ -278,20 +347,3 @@ hz_editor.removeControlPoint = function(op) {
 	f.call(hz_editor, op);
 
 };
-
-
-
-/////////////////////////
-
-
-
-var gui2 = new dat.GUI();
-
-
-// Overwrite dat.GUI close button position
-// By default set to absolute (not sure why...) and messes with floating.
-
-var style = document.createElement('style');
-document.head.appendChild(style);
-
-style.sheet.insertRule('.dg.main .close-button.close-bottom { position: static; }');

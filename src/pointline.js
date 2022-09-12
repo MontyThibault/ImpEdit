@@ -10,6 +10,13 @@ class PointLine {
 
 	draw(context, toX, toY) {
 
+
+		if(this.points.length === 0) {
+
+			return;
+
+		}
+
 		context.strokeStyle = this.color;
 
 		context.beginPath();

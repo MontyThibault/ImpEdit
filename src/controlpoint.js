@@ -15,7 +15,6 @@ class ControlPoint {
 
 		this.outline = false;
 
-
 		this.onactiveend();
 		
 	}

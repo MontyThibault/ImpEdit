@@ -38,40 +38,15 @@
 		</style>
 
 
-		<script type="text/javascript" src="dat.gui.min.js"></script>
+		<script type="text/javascript" src="dat.gui.js"></script>
 	</head>
 	<body>
-		<form>
-			<label for="audio_file">Please select audio file.</label>
-			<input type="file" id="audio_file" />
 
-		</form>
+		<div style='height: 50px;'></div>
 
 		<audio controls preload>
 			<source src='audio.mp3' type='audio/mpeg'></audio>
 		</audio>
-
-		<form>
-
-			<label for='normalization_enabled'>Enable Normalization</label>
-			<input type='checkbox' id='normalization_enabled' />
-
-			<label for='gain_slider' id='gain_label'>Gain: 1.0</label>
-			<input id='gain_slider' type='range' min='0' max='1' step='0.01'/>
-
-
-			<label for="convolution_enabled">Enable Impulse Response Convolution</label>
-			<input type="checkbox" id="convolution_enabled" />
-
-	
-			<label for="fft_enabled">Enable FFT Low-Pass</label>
-			<input type="checkbox" id="fft_enabled" />
-
-
-			<label for="range_slider" id='range_label'>100 Hz</label>
-			
-			<input id="range_slider" type="range" step="0.01" />
-		</form>
 
 		
 		<canvas id="ir_graph"></canvas>

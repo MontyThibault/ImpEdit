@@ -11,6 +11,8 @@ class OscillatorPoint {
 		cp.parent = this;
 		cp0.parent = this;
 
+		this.disabled = false;
+
 
 	}
 
