@@ -21,13 +21,13 @@ class MouseControl {
 
 	_getX(e) {
 
-		return e.clientX - this.canvas.getBoundingClientRect().left;
+		return (e.clientX - this.canvas.getBoundingClientRect().left) * window.devicePixelRatio;
 
 	}
 
 	_getY(e) {
 
-		return e.clientY - this.canvas.getBoundingClientRect().top;
+		return (e.clientY - this.canvas.getBoundingClientRect().top) * window.devicePixelRatio;
 		
 	}
 
