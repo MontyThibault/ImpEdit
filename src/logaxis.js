@@ -11,9 +11,6 @@ class LogAxis extends Axis {
 
 		if(min < 0 && max < 0) {
 
-			this.min = -min;
-			this.max = -max;
-
 			this.sign = -1;
 
 
@@ -37,8 +34,11 @@ class LogAxis extends Axis {
 
 		p *= this.sign;
 
-		var lmin = Math.log(this.min),
-			lmax = Math.log(this.max);
+		var min = this.min * this.sign,
+			max = this.max * this.sign;
+
+		var lmin = Math.log(min),
+			lmax = Math.log(max);
 
 		var ldiff = lmax - lmin;
 		return (Math.log(p) - lmin) / ldiff * this.get_full_extent();
@@ -48,8 +48,12 @@ class LogAxis extends Axis {
 
 	canvasToGraph(p) {
 
-		var lmin = Math.log(this.min),
-			lmax = Math.log(this.max);
+		var min = this.min * this.sign,
+			max = this.max * this.sign;
+
+
+		var lmin = Math.log(min),
+			lmax = Math.log(max);
 
 		var ldiff = lmax - lmin;
 		return Math.exp((p / this.get_full_extent()) * ldiff + lmin) * this.sign;
@@ -123,11 +127,27 @@ class LogAxis extends Axis {
 	panCanvas(diff, pos) {
 
 
-		// Improve this so we have sticky mouse behavior
+		var dmax = this.canvasToGraph(this.get_full_extent()) - this.canvasToGraph(this.get_full_extent() - diff),
+			dmin = this.canvasToGraph(0) - this.canvasToGraph(-diff);
 
-		var pan = this.canvasToGraphInterval(pos, diff);
 
-		this.panGraph(pan);
+		this.max -= dmax;
+		
+		if(this._testLimits()) {
+
+			this.max += dmax;
+
+		}
+
+
+		this.min -= dmin;
+		
+		if(this._testLimits()) {
+
+			this.min += dmin;
+
+		}
+
 
 	}
 

@@ -53,6 +53,21 @@ class Axis {
 	}
 
 
+	_testLimits() {
+
+		if(this.minLimit < this.maxLimit) {
+
+			return this.min < this.minLimit || this.max > this.maxLimit;
+
+		} else {
+
+			return this.min > this.minLimit || this.max < this.maxLimit;
+
+		}
+
+	}
+
+
 	_fixedWidthLimits() {
 
 
@@ -212,7 +227,7 @@ class Axis {
 		this.min -= diff;
 		this.max -= diff;
 
-		this._fixedWidthLimits();
+		this._limits();
 
 	}
 
@@ -221,24 +236,10 @@ class Axis {
 
 		if(bound_type === 'min') {
 
-			// if(this.min - diff < this.minLimit) {
-
-			// 	return;
-
-			// }
-
 			this.min -= diff;
 
 
-
-
 		} else if(bound_type === 'max') {
-
-			// if(this.max - diff > this.maxLimit) {
-
-			// 	return;
-
-			// }
 
 			this.max -= diff;
 

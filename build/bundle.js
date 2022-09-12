@@ -610,6 +610,21 @@ class Axis {
 	}
 
 
+	_testLimits() {
+
+		if(this.minLimit < this.maxLimit) {
+
+			return this.min < this.minLimit || this.max > this.maxLimit;
+
+		} else {
+
+			return this.min > this.minLimit || this.max < this.maxLimit;
+
+		}
+
+	}
+
+
 	_fixedWidthLimits() {
 
 
@@ -769,7 +784,7 @@ class Axis {
 		this.min -= diff;
 		this.max -= diff;
 
-		this._fixedWidthLimits();
+		this._limits();
 
 	}
 
@@ -778,24 +793,10 @@ class Axis {
 
 		if(bound_type === 'min') {
 
-			// if(this.min - diff < this.minLimit) {
-
-			// 	return;
-
-			// }
-
 			this.min -= diff;
 
 
-
-
 		} else if(bound_type === 'max') {
-
-			// if(this.max - diff > this.maxLimit) {
-
-			// 	return;
-
-			// }
 
 			this.max -= diff;
 
@@ -1033,7 +1034,7 @@ class FrequencyGraph extends Graph {
 
 		
 		this.xAxis = new LogAxis(true, 5, 10000, function() { return canvas2d.width; });
-		this.yAxis = new LogAxis(false, 1, 100, function() { return canvas2d.height; });
+		this.yAxis = new LogAxis(false, -1, -100, function() { return canvas2d.height; });
 
 		this.initAxes(this.xAxis, this.yAxis);
 
@@ -1195,6 +1196,11 @@ class FrequencyGraph extends Graph {
 
 		const vsSource = `
 
+			#define TYPE_LINEAR 0
+			#define TYPE_LOG 1
+			#define TYPE_NEGATIVELOG 2
+
+
 			uniform lowp int uAxisTypes[2];
 
 			attribute vec2 aVertexScreenPosition;
@@ -1210,15 +1216,16 @@ class FrequencyGraph extends Graph {
 
 				vVertexGraphPosition = aVertexGraphPosition;
 
-				if(uAxisTypes[0] == 1) {
+				if((uAxisTypes[0] == TYPE_LOG) || (uAxisTypes[0] == TYPE_NEGATIVELOG)) {
 
-					vVertexGraphPosition.x = log(vVertexGraphPosition.x);
+					vVertexGraphPosition.x = log(abs(vVertexGraphPosition.x));
 
 				}
 
-				if(uAxisTypes[1] == 1) {
 
-					vVertexGraphPosition.y = log(vVertexGraphPosition.y);
+				if((uAxisTypes[1] == TYPE_LOG) || (uAxisTypes[1] == TYPE_NEGATIVELOG)) {
+
+					vVertexGraphPosition.y = log(abs(vVertexGraphPosition.y));
 
 				}
 
@@ -1232,6 +1239,12 @@ class FrequencyGraph extends Graph {
 			#define buffer_length 1000
 			#define samplerate 96000.0
 			#define pi 3.1415926536
+
+			#define TYPE_LINEAR 0
+			#define TYPE_LOG 1
+			#define TYPE_NEGATIVELOG 2
+
+
 
 			uniform lowp int uAxisTypes[2];
 			uniform lowp float uIR[buffer_length];
@@ -1291,16 +1304,27 @@ class FrequencyGraph extends Graph {
 				lowp vec2 vgp = vVertexGraphPosition;
 
 
-				if(uAxisTypes[0] == 1) {
+				if(uAxisTypes[0] == TYPE_LOG) {
 
 					vgp.x = exp(vgp.x);
 
 				}
 
+				if(uAxisTypes[0] == TYPE_NEGATIVELOG) {
 
-				if(uAxisTypes[1] == 1) {
+					vgp.x = -exp(vgp.x);
+
+				}
+
+				if(uAxisTypes[1] == TYPE_LOG) {
 
 					vgp.y = exp(vgp.y);
+
+				}
+
+				if(uAxisTypes[1] == TYPE_NEGATIVELOG) {
+
+					vgp.y = -exp(vgp.y);
 
 				}
 
@@ -1368,6 +1392,20 @@ class FrequencyGraph extends Graph {
 
 		this.axisTypes[0] = this.xAxis.type;
 		this.axisTypes[1] = this.yAxis.type;
+
+
+		if(this.xAxis.sign === -1) {
+
+			this.axisTypes[0] = 2;
+
+		}
+
+		if(this.yAxis.sign === -1) {
+
+			this.axisTypes[1] = 2;
+
+		}
+
 
 		const axisBuffer = this.gl.createBuffer();
 
@@ -1914,9 +1952,6 @@ class LogAxis extends Axis {
 
 		if(min < 0 && max < 0) {
 
-			this.min = -min;
-			this.max = -max;
-
 			this.sign = -1;
 
 
@@ -1940,8 +1975,11 @@ class LogAxis extends Axis {
 
 		p *= this.sign;
 
-		var lmin = Math.log(this.min),
-			lmax = Math.log(this.max);
+		var min = this.min * this.sign,
+			max = this.max * this.sign;
+
+		var lmin = Math.log(min),
+			lmax = Math.log(max);
 
 		var ldiff = lmax - lmin;
 		return (Math.log(p) - lmin) / ldiff * this.get_full_extent();
@@ -1951,8 +1989,12 @@ class LogAxis extends Axis {
 
 	canvasToGraph(p) {
 
-		var lmin = Math.log(this.min),
-			lmax = Math.log(this.max);
+		var min = this.min * this.sign,
+			max = this.max * this.sign;
+
+
+		var lmin = Math.log(min),
+			lmax = Math.log(max);
 
 		var ldiff = lmax - lmin;
 		return Math.exp((p / this.get_full_extent()) * ldiff + lmin) * this.sign;
@@ -2026,11 +2068,27 @@ class LogAxis extends Axis {
 	panCanvas(diff, pos) {
 
 
-		// Improve this so we have sticky mouse behavior
+		var dmax = this.canvasToGraph(this.get_full_extent()) - this.canvasToGraph(this.get_full_extent() - diff),
+			dmin = this.canvasToGraph(0) - this.canvasToGraph(-diff);
 
-		var pan = this.canvasToGraphInterval(pos, diff);
 
-		this.panGraph(pan);
+		this.max -= dmax;
+		
+		if(this._testLimits()) {
+
+			this.max += dmax;
+
+		}
+
+
+		this.min -= dmin;
+		
+		if(this._testLimits()) {
+
+			this.min += dmin;
+
+		}
+
 
 	}
 
@@ -3151,6 +3209,7 @@ module.exports = ReferenceLines;
 
 
 function ReferenceLinesAxis(principal_axis, secondary_axis) {
+
 	this.axis = principal_axis;
 
 	// Required only for drawing
@@ -3174,9 +3233,32 @@ ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
 		max = Math.max(this.axis.min, this.axis.max);
 
 
-	var begin = Math.floor(min / interval) * interval,
-		end = Math.ceil(max / interval) * interval;
 
+	var begin = Math.round(min / interval) * interval,
+		end = Math.round(max / interval) * interval;
+
+
+	// In this case, we wish to begin from the top and iterate downwards
+	// as to not disrupt the order of the breaking functionality.
+
+	if(this.axis.type === this.axis.TYPE_LOG && this.axis.min < 0) {
+
+		for(var j = end; j >= begin; j -= interval) {
+
+			if(f.call(this, j)) {
+
+				break;
+
+			}
+
+		}
+
+		return;
+
+	}
+
+
+	// Regular iteration
 
 	for(var j = begin; j <= end; j += interval) {
 
@@ -3218,6 +3300,13 @@ ReferenceLinesAxis.prototype.drawLine = function(context, toX, toY, j) {
 
 	function lineTo(x, y) {
 		context.lineTo(toX(x), toY(y));
+	}
+
+
+	if(this.axis.type === 1) {
+
+		abc=123;
+
 	}
 
 
@@ -3296,7 +3385,7 @@ ReferenceLinesAxis.prototype.drawLinesAtScale = function(context, toX, toY, scal
 			}
 
 
-			if(this.axis.graphToCanvasInterval(j, interval) < pixelThresh) {
+			if(Math.abs(this.axis.graphToCanvasInterval(j, interval)) < pixelThresh) {
 
 				return true;
 
