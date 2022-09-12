@@ -21,7 +21,7 @@ class FrequencyGraph extends Graph {
 
 		
 		this.xAxis = new LogAxis(true, 100, 10000, function() { return this.canvas.width; }.bind(this));
-		this.yAxis = new LogAxis(false, -1000, -10, function() { return this.canvas.height; }.bind(this));
+		this.yAxis = new LogAxis(false, -100000, -100, function() { return this.canvas.height; }.bind(this));
 
 		this.initAxes(this.xAxis, this.yAxis);
 

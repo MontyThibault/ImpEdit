@@ -10,12 +10,9 @@
   "dependencies": {
     "babel-cli": "^6.26.0",
     "babel-preset-env": "^1.6.0",
-    "chai": "^4.1.2"
-  },
-  "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-preset-env": "^1.6.0",
-    "mocha": "^3.5.0"
+    "browserify": "^16.1.1",
+    "chai": "^4.1.2",
+    "jsfft": "0.0.3"
   },
   "scripts": {
     "test": "mocha",
