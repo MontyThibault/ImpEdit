@@ -3,6 +3,25 @@ require('./datguimodifications.js');
 
 module.exports = function(audio) {
 
+
+	var helpbox = document.getElementById('helpbox'),
+		helptext = document.getElementById('helptext');
+
+
+	helpbox.onclick = function(e) {
+
+		if(helptext.style.visibility === 'visible') {
+
+			helptext.style.visibility = 'hidden';
+
+		} else {
+
+			helptext.style.visibility = 'visible';
+
+		}
+
+	};
+
 	var file_input = document.createElement('input');
 	file_input.setAttribute('type', 'file');
 

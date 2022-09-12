@@ -8,6 +8,8 @@
 			html, body, p {
 				padding: 0;
 				margin: 0;
+
+				overflow: hidden;
 			}
 
 			audio {
@@ -35,6 +37,67 @@
 			form > label:first-child {
 				margin-left: 0px;
 			}
+
+
+			#helpbox {
+
+				width: 20px;
+				height: 20px;
+
+				color: #eee;
+				background-color: #000;
+
+				text-align: center;
+				line-height: 19px;
+
+				position: absolute;
+				left: 15px;
+				top: 0px;
+
+			}
+
+			#helpbox:hover {
+
+				background-color: #252525;
+
+			}
+
+			#helptext {
+
+				background-color: white;
+				position: absolute;
+
+				top: 30px;
+				left: 15px;
+				right: 15px;
+
+				padding: 30px;
+				z-index: 10;
+				opacity: 0.9;
+
+				column-count: 3;
+
+				visibility: hidden;
+
+			}
+
+			#helptext>h2 {
+
+				column-span: all;
+
+			}
+
+			p {
+
+				margin-top: 10px;
+
+			}
+
+			#helptext>p:first-child {
+
+				margin-top: 0px;
+
+			}
 		</style>
 
 
@@ -42,15 +105,50 @@
 	</head>
 	<body>
 
-		<div style='height: 50px;'></div>
+		<div id='helpbox'>?</div>
 
-		<audio controls preload>
-			<source src='audio.mp3' type='audio/mpeg'></audio>
-		</audio>
+		<div id='helptext'>
+			
+			<h2>ImpEdit</h2>
 
+			<p>This application is an interactive way to visualize and edit aural impulse responses. In all windows, use scroll wheel or side handles to adjust zoom.</p>
+
+
+			<h3>Waveform Editor</h3>
+
+			<p>The top half of the application is the wave editor. This is a visual graph with a single impulse at time <em>x = 0</em> and the subsequent falloff.</p>
+
+			<ul>
+
+				<li><em>Adding points.</em> Double click in the open space to add a new control point.</li>
+
+				<li><em>Removing points.</em> Hover over a point to select it. Double click to remove the control point.</li>
+
+			</ul>
+
+			<p>Two or more points will be linearly interpolated, represented with a solid red line.</p>
+
+
+			<h3>Oscillator Editor</h3>
+
+			<p>The bottom half of the application is the oscillator editor. The left window is a complex plane <a href='https://en.wikipedia.org/wiki/Laplace_transform'>Laplace visualizer</a>, with frequency on the x-axis and damping on the y-axis. The right window controls amplitude and phase of the oscillator.</p>
+
+			<p>Add and remove points the same way as the waveform editor. Points are linked between the left and right windows. Advanced oscillator settings can be edited using the rightmost dark GUI form.</p>
+			
+
+			<p>Between the waveform editor and oscillator editor, you can generate an extremely complex impulse response. This combined impulse response is visualized as a dotted line in the waveform editor and as a color gradient in the Laplace visualizer.</p>
+
+
+			<h3>Audio Playback</h3>
+
+			<p>Audio playback is controlled (1) with the leftmost dark GUI form and (2) with the scrubber at the bottom of the screen. Load an audio file using <em>Choose File</em>. Your convolution can then be applied with <em>Convolution Enabled</em> and you can apply an FFT lowpass filter using <em>FFT Enabled</em> and <em>FFT Frequency</em>.</p>
+
+			<p>All settings in this application are updated in real time using HTML canvas, WebGL, and WebAudio.</p>
+
+
+		</div>
 		
 		<canvas id="ir_graph"></canvas>
-		
 
 
 		<div class='halfgraph'>
@@ -64,6 +162,11 @@
 		<div class='halfgraph'>
 			<canvas id="og_graph"></canvas>
 		</div>
+
+
+		<audio controls preload>
+			<source src='audio.mp3' type='audio/mpeg'></audio>
+		</audio>
 
 
 		<script src='jquery-3.2.1.js'></script>
