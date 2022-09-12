@@ -1,3 +1,21 @@
+
+function debounce(f, delay) {
+  var timer = null;
+
+  return function () {
+    var context = this, 
+    	args = arguments;
+
+    clearTimeout(timer);
+
+    timer = setTimeout(function () {
+      f.apply(context, args);
+    }, delay);
+  };
+}
+
+
+
 function MouseControl(graph) {
 
 	this.active = false;
@@ -111,6 +129,10 @@ MouseControl.prototype.onmousedown = function(e) {
 
 MouseControl.prototype.onmouseup = function(e) {
 	this.mousedown = false;
+
+	if(this.active && this.active.onmouseup) {
+		this.active.onmouseup();
+	}
 };
 
 MouseControl.prototype.ondblclick = function(e) {

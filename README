@@ -3,3 +3,7 @@ Potential improvements:
 
 Set up a window resize observer system instead of querying every frame.
 Set up an update hierarchy instead of drawing every frame.
+
+
+Fix referencelines bug: lower scales always drawn before higher scales (even if different objects)
+Make referencelines scalefactor in proportion to screen size.

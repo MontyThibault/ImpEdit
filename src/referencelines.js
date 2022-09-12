@@ -33,7 +33,9 @@ ReferenceLines.prototype._drawLines = function(context, toX, toY) {
 		Math.log(this.line_multiples);
 
 
-	var scales = [Math.floor(scalefactor), Math.floor(scalefactor) - 1];
+	var scales = [Math.floor(scalefactor) - 1, Math.floor(scalefactor)];
+
+	// This should be implemented as a ratio of screen width/height
 	var scalelevels = 2;
 	
 
