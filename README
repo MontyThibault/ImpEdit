@@ -6,4 +6,4 @@ Set up an update hierarchy instead of drawing every frame.
 
 
 Fix referencelines bug: lower scales always drawn before higher scales (even if different objects)
-Make referencelines scalefactor in proportion to screen size.
+Make referencelines color in proportion to canvas distance, not log distance.

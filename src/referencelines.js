@@ -15,13 +15,30 @@ function ReferenceLines(principal_axis, secondary_axis) {
 ReferenceLines.prototype._getDrawingArray = function(ref) {
 
 
+	// scale-x refers to logarithmic values
+
+	// Screen span
+
 	var scalefactor = Math.log(Math.abs(ref.axis.max - ref.axis.min)) / 
 		Math.log(ref.line_multiples);
 
 
 
-	// This should be implemented as a ratio of screen width/height
-	var scalelevels = 2;  // ref.axis.get_full_extent() / 250;
+	// ex. scalelevels = 2 means to draw two "levels" of reference lines
+	// with shading proportional to (scalefactor - refscale) / scalelevels.
+
+	// Fractional values are allowed. 
+
+	// screenwidth ~ ref.line_multiples ^ scalelevels
+	// -> scalelevels ~ log_{ref.line_multiples} screenwidth 
+
+	var scalelevels = Math.log(ref.axis.get_full_extent());
+
+	// We wish that screenwidth = 500 -> scalelevels = 2
+
+	scalelevels /= Math.log(500);
+	scalelevels *= 2;
+
 
 
 	var a = [];
@@ -31,7 +48,9 @@ ReferenceLines.prototype._getDrawingArray = function(ref) {
 		var scale = Math.floor(scalefactor) - i;
 		var shade = ref.getShade(scale, scalefactor, scalelevels);
 
-		a.push([shade, scale, function(context, toX, toY, scale) {
+
+		// Revise this
+		a.push([shade, scale, scalefactor, scalelevels, function(context, toX, toY, scale, scalefactor, scalelevels) {
 			ref.drawLines(context, toX, toY, scale, scalefactor, scalelevels);
 		}]);
 
@@ -59,7 +78,9 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
 	for(var i = 0; i < a.length; i++) {
-		a[i][2](context, toX, toY, a[i][1]);
+
+		// Draw
+		a[i][4](context, toX, toY, a[i][1], a[i][2], a[i][3]);
 	}
 
 
