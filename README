@@ -1,15 +1,13 @@
 To do:
 
 
--> Add special labels & lines (for axes and titles)
 
 -> Graphical table to edit oscillator values
-
-
-
-
 -> Set up some sort of interactive interface screen, where you can choose a frequency, it sets the lowpass filter, then change sliders for damping, phase, amplitude at that frequency.
 
+
+
+-> dat.gui can help with saving
 
 
 ///////////////
@@ -26,3 +24,4 @@ Weekend goals
 -> Variable buffer length
 
 -> Code review
+	-> axis.orientationf can be used with bind()

@@ -1,21 +1,3 @@
-
-function debounce(f, delay) {
-  var timer = null;
-
-  return function () {
-    var context = this, 
-    	args = arguments;
-
-    clearTimeout(timer);
-
-    timer = setTimeout(function () {
-      f.apply(context, args);
-    }, delay);
-  };
-}
-
-
-
 class MouseControl {
 
 	constructor(graph) {

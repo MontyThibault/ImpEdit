@@ -9,6 +9,13 @@ class ControlPoint {
 		this.graph = graph;
 
 		this.strokeColor;
+
+		this.activeColor = '#FF0000';
+		this.nonactiveColor = '#000000';
+
+		this.outline = false;
+
+
 		this.onactiveend();
 		
 	}
@@ -16,12 +23,29 @@ class ControlPoint {
 
 	draw(context, toX, toY) {
 	
+
+		if(this.outline) {
+
+			context.strokeStyle = '#FFFFFF';
+			context.lineWidth = 5;
+
+			context.beginPath();
+			context.arc(toX(this.x), toY(this.y), 10, 0, 2 * Math.PI);
+			context.stroke();
+
+			context.lineWidth = 3;
+
+		}
+
+
 		// Draw circle
 		context.strokeStyle = this.strokeColor;
 
 		context.beginPath();
 		context.arc(toX(this.x), toY(this.y), 10, 0, 2 * Math.PI);
 		context.stroke();
+
+		context.lineWidth = 1;
 
 	}
 
@@ -49,14 +73,14 @@ class ControlPoint {
 
 	onactivestart() {
 
-		this.strokeColor = '#FF0000';
+		this.strokeColor = this.activeColor;
 
 	}
 
 
 	onactiveend() {
 
-		this.strokeColor = '#000000';
+		this.strokeColor = this.nonactiveColor;
 
 	}
 

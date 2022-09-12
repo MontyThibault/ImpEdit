@@ -13,18 +13,26 @@ function prevent_default_set_context(that, f) {
 pdsc = prevent_default_set_context;
 
 
-function debounce(f, delay) {
-  var timer = null;
-
+function throttle(fn, threshhold, scope) {
+  threshhold || (threshhold = 250);
+  var last,
+      deferTimer;
   return function () {
-    var context = this, 
-    	args = arguments;
+    var context = scope || this;
 
-    clearTimeout(timer);
-
-    timer = setTimeout(function () {
-      f.apply(context, args);
-    }, delay);
+    var now = +new Date,
+        args = arguments;
+    if (last && now < last + threshhold) {
+      // hold on to it
+      clearTimeout(deferTimer);
+      deferTimer = setTimeout(function () {
+        last = now;
+        fn.apply(context, args);
+      }, threshhold);
+    } else {
+      last = now;
+      fn.apply(context, args);
+    }
   };
 }
 
@@ -149,6 +157,16 @@ class Graph {
 	}
 
 
+	addControlPoint(x, y) {
+
+		var fromX = this.xAxis.canvasToGraph(x),
+			fromY = this.yAxis.canvasToGraph(y);
+
+		return this.editor.addControlPoint(fromX, fromY);
+		
+	}
+
+
 	mouseBindings(canvas) {
 
 		canvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
@@ -158,7 +176,7 @@ class Graph {
 
 		var that = this;
 		document.addEventListener('mousemove', 
-			debounce(pdsc(that.mousecontrol, that.mousecontrol.onmousemove), 1000 / 60));
+			throttle(pdsc(that.mousecontrol, that.mousecontrol.onmousemove), 1000 / 60));
 
 
 		document.addEventListener('mouseup', that.mousecontrol.onmouseup.bind(that.mousecontrol));

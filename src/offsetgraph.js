@@ -56,7 +56,7 @@ class OffsetGraph extends Graph {
 		var fromX = this.xAxis.canvasToGraph(x),
 			fromY = this.yAxis.canvasToGraph(y);
 
-		this.editor.parent.addControlPointEditor0(fromX, fromY);
+		return this.editor.parent.addControlPointEditor0(fromX, fromY);
 	}
 
 
