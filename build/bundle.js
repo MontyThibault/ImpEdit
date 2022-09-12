@@ -767,9 +767,9 @@ function Graph(canvas) {
 
 	this.reference = new ReferenceLines(this.xAxis, this.yAxis);
 
-	this.reference.xRef.specialLabels.push([0, 'Y', '#0000FF']);
+	this.reference.xRef.specialLabels.push([0, 'Y (Waveform)', '#0000FF']);
 	this.reference.xRef.specialLabels.push([5, 'END', '#00CC00', [10, 3, 2, 3]]);
-	this.reference.yRef.specialLabels.push([0, 'X', '#0000FF']);
+	this.reference.yRef.specialLabels.push([0, 'X (s)', '#0000FF']);
 
 
 	this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis, this.reference.xRef.specialLabels);
@@ -793,6 +793,18 @@ function Graph(canvas) {
 }
 
 
+Graph.prototype._drawElements = function(context, toX, toY) {
+
+	this.reference.draw(context, toX, toY);
+
+	this.xAxisRange.draw(context, toX, toY);
+	this.yAxisRange.draw(context, toX, toY);
+
+	this.lineeditor.draw(context, toX, toY);
+
+};
+
+
 Graph.prototype.draw = function(context) {
 
 	if(!this.needsUpdate) {
@@ -800,9 +812,7 @@ Graph.prototype.draw = function(context) {
 	}
 
 
-	context.fillStyle = '#F5F5F5';
-	context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
+	context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
 	var xAxis = this.xAxis;
 	var yAxis = this.yAxis;
@@ -812,12 +822,7 @@ Graph.prototype.draw = function(context) {
 		toY = function(x) { return yAxis.graphToCanvas.call(yAxis, x); };
 
 
-	this.reference.draw(context, toX, toY);
-
-	this.xAxisRange.draw(context, toX, toY);
-	this.yAxisRange.draw(context, toX, toY);
-
-	this.lineeditor.draw(context, toX, toY);
+	this._drawElements(context, toX, toY);
 
 
 	this.needsUpdate = false;
@@ -1046,19 +1051,32 @@ var Audio = require("./audio.js");
 var attachAudioDOM = require("./audioDOM.js");
 
 
-var graph_canvas = document.getElementById('screen');
-var graph_context = graph_canvas.getContext('2d');
+var ir_canvas = document.getElementById('ir_graph');
+var ir_context = ir_canvas.getContext('2d');
 
 
-var graph = new Graph(graph_canvas);
+var hz_canvas = document.getElementById('hz_graph');
+var hz_context = hz_canvas.getContext('2d');
+
+
+
+var ir = new Graph(ir_canvas);
+var hz = new Graph(hz_canvas);
 
 
 window.onresize = function() {
 
-	graph_canvas.width = window.innerWidth;
-	graph_canvas.height = 500;
+	ir_canvas.width = window.innerWidth;
+	ir_canvas.height = 500;
 
-	graph.needsUpdate = true;
+	ir.needsUpdate = true;
+
+
+	hz_canvas.width = window.innerWidth;
+	hz_canvas.height = 500;
+
+	hz.needsUpdate = true;
+
 
 	draw();
 };
@@ -1067,7 +1085,8 @@ function draw() {
 
 	requestAnimationFrame(draw);
 
-	graph.draw(graph_context);
+	ir.draw(ir_context);
+	hz.draw(hz_context);
 
 }
 

@@ -1,27 +1,17 @@
 To do:
 
 
--> Make a major-line labeling system with special labels and lines drawn on sidebars.
-	Can be used to implement units on graph labels.
-
--> Generalize things turning red on hover and have drag difference.
+-> Fix scollbar bugs
+	-> Fast scrolling inverts graph
+	-> Inverted graph does not render properly (insert some Math.abs's)
 
 -> n-pixel padding
-
--> smooth scrolling
--> scroll towards cursor
--> scroll scale box
-
-
-
-
 -> Waveform scrubber
+-> Begin on Laplace editor. (WebGL implementation)
 
 
 
-Begin on Laplace editor. (WebGL implementation)
 FFT EQ (this should be very easy)
-
 
 Hook up convolver with graph editor (convolver currently doesn't work for an unknown reason)
 Fix clicking bug with FFT (didn't work first time...)
