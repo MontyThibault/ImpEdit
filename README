@@ -1,14 +1,12 @@
 To do:
 
 
--> Handle bug (drag until it's too small -> can't drag anymore)
--> Handle inversion bug
+-> n-pixel padding
 
 
 -> Implement log coloring in webGL script
 
 
--> n-pixel padding
 
 
 -> Fix clicking bug with FFT (didn't work first time...)
@@ -16,12 +14,9 @@ To do:
 -> Do something about variable buffer length
 
 
-////////
-// End of weekend goals
-
-
 
 -> Implement axial scaling for oscillator phase and magnitude
+
 
 -> Add a "convert to IR" button that destroys oscillators
 
