@@ -1,15 +1,23 @@
 To do:
 
 
--> Implement viewport scaling from handle corners.
+-> Make a major-line labeling system with special labels and lines drawn on sidebars.
+	Can be used to implement units on graph labels.
+
+-> Generalize things turning red on hover and have drag difference.
+
+-> n-pixel padding
+
+-> smooth scrolling
+-> scroll towards cursor
+-> scroll scale box
+
+-> Enable mouse movements over whole screen (not just canvas)
+
+
+
+
 -> Waveform scrubber
--> Music file selection dialogue
-
--> Units on graph labels
-
-
-Create limits for editor elements, distinct from the window limits.
-Or maybe include an n-pixel padding.
 
 
 

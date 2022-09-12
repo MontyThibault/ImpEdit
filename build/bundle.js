@@ -633,7 +633,34 @@ Axis.prototype.panGraph = function(diff) {
 
 	this._limits();
 
-}
+};
+
+Axis.prototype.panGraphMinMax = function(diff, bound_type) {
+
+	if(bound_type === 'min') {
+
+		if(this.min - diff < this.minLimit) {
+
+			return;
+
+		}
+
+		this.min -= diff;
+
+
+	} else if(bound_type === 'max') {
+
+		if(this.max - diff > this.maxLimit) {
+
+			return;
+
+		}
+
+		this.max -= diff;
+
+	}
+
+};
 
 
 
@@ -747,8 +774,8 @@ function Graph(canvas) {
 
 	this.lineeditor.addControlPoint(0, 0);
 
-	this.mousecontrol.addObject(this.xAxisRange);
-	this.mousecontrol.addObject(this.yAxisRange);
+	this.xAxisRange.mousecontrol(this.mousecontrol);
+	this.yAxisRange.mousecontrol(this.mousecontrol);
 
 
 	canvas.onmousemove = pdsc(this.mousecontrol, 
@@ -1187,9 +1214,131 @@ MouseControl.prototype.onscroll = function(e) {
 
 module.exports = MouseControl; // Singleton
 },{}],12:[function(require,module,exports){
-
 // Throughout this class, p refers to "principal" and s refers to
 // "secondary", as a generic version of x/y or y/x, depending on the orientation.
+
+function CornerDraggable(parent, bound_type) {
+
+	this.parent = parent;
+
+	this.p = 0;
+	this.s = 0;
+
+	this.strokeColor = "#000000";
+
+	this.prevDragX = undefined;
+	this.prevDragY = undefined;
+
+	this.bound_type = bound_type;
+
+}
+
+CornerDraggable.prototype.distanceTo = function(x, y) {
+
+	if(this.parent.axis.orientation) {
+
+		var myX = this.p,
+			myY = this.s;
+
+	} else {
+
+		var myX = this.s,
+			myY = this.p;
+
+	}
+
+	return Math.sqrt((x - myX) * (x - myX) + (y - myY) * (y - myY));
+
+};	
+
+CornerDraggable.prototype.draw = function(context) {
+
+	context.strokeStyle = this.strokeColor;
+
+	if(this.parent.axis.orientation) {
+
+		var x = this.p,
+			y = this.s;
+
+	} else {
+
+		var x = this.s,
+			y = this.p;		
+
+	}
+
+
+	context.beginPath();
+
+	context.moveTo(x + this.parent.corner_drag_radius, y);
+	context.arc(x, y, this.parent.corner_drag_radius, 0, 2 * Math.PI);
+
+	context.stroke();
+
+};
+
+
+CornerDraggable.prototype.onactivestart = function() {
+
+	this.strokeColor = '#FF0000';
+
+};
+
+
+CornerDraggable.prototype.onactiveend = function() {
+
+	this.strokeColor = '#000000';
+
+};
+
+
+CornerDraggable.prototype.onmouseup = function() {
+
+	this.prevDragX = undefined;
+	this.prevDragY = undefined;
+
+};
+
+
+CornerDraggable.prototype.ondrag = function(x, y) {
+
+	if(this.prevDragX !== undefined) {
+
+
+		// Disable corners if corners are within dragging threshold
+
+		if(Math.abs(this.parent.endP - this.parent.startP) < this.parent.corner_drag_thresh) {
+
+			this.onmouseup();
+			return;
+
+		}
+
+
+		if(this.parent.axis.orientation) {
+			var dp = x - this.prevDragX;
+		} else {
+			var dp = y - this.prevDragY;
+		}
+
+
+		var visualDiff = this.parent.maxP - this.parent.minP,
+			graphDiff = this.parent.axis.maxLimit - this.parent.axis.minLimit;
+
+
+		// dx / visualDiff = m / graphDiff
+		var m = -graphDiff * dp / visualDiff;
+
+		this.parent.axis.panGraphMinMax(m, this.bound_type);
+
+	}
+
+	this.prevDragX = x;
+	this.prevDragY = y;
+
+};
+
+
 
 
 function RangeSlider(principal_axis, secondary_axis) {
@@ -1209,6 +1358,16 @@ function RangeSlider(principal_axis, secondary_axis) {
 	this.prevDragY = undefined;
 
 
+	// Disable corner dragging at this length (px) 
+	this.corner_drag_thresh = 20;
+	this.corner_drag_radius = 3;
+
+	this.corner_min = new CornerDraggable(this, 'min');
+	this.corner_max = new CornerDraggable(this, 'max');
+
+	this._enabledCornerDrag = null;
+
+
 	this.onactiveend();
 
 }
@@ -1216,24 +1375,31 @@ function RangeSlider(principal_axis, secondary_axis) {
 
 RangeSlider.prototype.draw = function(context, toX, toY) {
 
+
+	// Bounding box
+
+	var bb_height = 20;
+	var bb_side_padding = 25;
+
+
 	if(this.axis.orientation) {
 
 		var toP = toX,
 			toS = toY;
 		
 		var startX = 0,
-		    startY = toY(this.saxis.max) - 20,
+		    startY = toY(this.saxis.max) - bb_height,
 		    width = toX(this.axis.max),
-		    height = 20;
+		    height = bb_height;
 
 	} else {
 
 		var toP = toY,
 			toS = toX;
 	
-		var startX = toX(this.saxis.max) - 20,
+		var startX = toX(this.saxis.max) - bb_height,
 		    startY = 0,
-		    width = 20,
+		    width = bb_height,
 		    height = toY(this.axis.max);
 
 	}
@@ -1242,21 +1408,12 @@ RangeSlider.prototype.draw = function(context, toX, toY) {
 	context.fillRect(startX, startY, width, height);
 
 
+	// These parameters provide padding from the canvas boundaries to the
+	// computed mins and maxes. i.e. min is inset 20px from the extreme left.
+	this.minP = bb_side_padding,
+	this.maxP = toP(this.axis.max) - bb_side_padding;
+	this.midS = toS(this.saxis.max) - (bb_height / 2);
 
-	this.minP = 20,
-	this.maxP = toP(this.axis.max) - 20;
-
-	this.midS = toS(this.saxis.max) - 10;
-
-
-	var o = this.axis.orientation;
-	function arc(x, y, r, sa, ea) {
-		if(o) {
-			context.arc(x, y, r, sa, ea);
-		} else {
-			context.arc(y, x, r, sa + Math.PI / 2, ea + Math.PI / 2);
-		}
-	}
 
 
 	var diff = this.maxP - this.minP;
@@ -1268,25 +1425,52 @@ RangeSlider.prototype.draw = function(context, toX, toY) {
 		(this.axis.maxLimit - this.axis.minLimit) * diff);
 	
 
-	context.strokeStyle = this.strokeColor;
-	context.beginPath();
+	this.updateCornerDrag();
 
-	// Draw first circle-half & dot
-	arc(this.startP, this.midS, 1, 0, 2 * Math.PI);
-	
 
-	// Draw second circle-half & dot
-	arc(this.endP, this.midS, 1, 0, 2 * Math.PI);
+	// Draw corner circles
+
+	// Circles should not overlap
+	if(this.endP - this.startP < this.corner_drag_radius * 2) {
+
+		var avg = (this.endP + this.startP) / 2;
+		this.startP = avg - this.corner_drag_radius;
+		this.endP = avg + this.corner_drag_radius;
+
+	}
+
+
+	this.corner_max.p = this.endP;
+	this.corner_max.s = this.midS;
+
+	this.corner_min.p = this.startP;
+	this.corner_min.s = this.midS;
+
+	this.corner_min.draw(context);
+	this.corner_max.draw(context);
 
 
 	// Draw connecting lines
 
+	context.strokeStyle = this.strokeColor;
+	context.beginPath();
+
+
+	if(this.axis.orientation) {
+
+		context.moveTo(this.startP + this.corner_drag_radius, this.midS);
+		context.lineTo(this.endP - this.corner_drag_radius, this.midS);
+
+	} else {
+
+		context.moveTo(this.midS, this.startP + this.corner_drag_radius);
+		context.lineTo(this.midS, this.endP - this.corner_drag_radius);
+
+	}
 
 	context.stroke();
-	
 
 };
-
 
 RangeSlider.prototype.distanceTo = function(x, y) {
 
@@ -1298,13 +1482,25 @@ RangeSlider.prototype.distanceTo = function(x, y) {
 			p = y;
 	}
 
-	if(p < this.startP) {
 
-		return Math.sqrt((this.startP - p) * (this.startP - p) + (this.midS - s) * (this.midS - s));
+	var startP = this.startP,
+		endP = this.endP;
+
+	if(this._enabledCornerDrag) {
+
+		startP += this.corner_drag_radius;
+		endP -= this.corner_drag_radius; 
 	
-	} else if(p > this.endP) {
+	}
 
-		return Math.sqrt((this.endP - p) * (this.endP - p) + (this.midS - s) * (this.midS - s));
+
+	if(p < startP) {
+
+		return Math.sqrt((startP - p) * (startP - p) + (this.midS - s) * (this.midS - s));
+	
+	} else if(p > endP) {
+
+		return Math.sqrt((endP - p) * (endP - p) + (this.midS - s) * (this.midS - s));
 
 	} else {
 
@@ -1352,12 +1548,14 @@ RangeSlider.prototype.onmouseup = function() {
 RangeSlider.prototype.onactivestart = function() {
 
 	this.strokeColor = "#FF0000";
+	this._updateCornerColors();
 
 };
 
 RangeSlider.prototype.onactiveend = function() {
 
 	this.strokeColor = '#000000';
+	this._updateCornerColors();
 
 };
 
@@ -1365,6 +1563,75 @@ RangeSlider.prototype.onactiveend = function() {
 RangeSlider.prototype.ondblclick = function() {
 	this.axis.min = this.axis.minLimit;
 	this.axis.max = this.axis.maxLimit;
+};
+
+
+RangeSlider.prototype.mousecontrol = function(mousecontrol) {
+
+	this._mousecontrol = mousecontrol;
+
+	mousecontrol.addObject(this);
+
+};
+
+RangeSlider.prototype._enableCornerDrag = function() {
+
+	this._enabledCornerDrag = true;
+	this._mousecontrol.addObject(this.corner_min);
+	this._mousecontrol.addObject(this.corner_max);
+
+	this._updateCornerColors();
+
+};
+
+
+RangeSlider.prototype._disableCornerDrag = function() {
+
+	this._enabledCornerDrag = false;
+	this._mousecontrol.removeObject(this.corner_min);
+	this._mousecontrol.removeObject(this.corner_max);
+
+	this._updateCornerColors();
+
+};
+
+RangeSlider.prototype.updateCornerDrag = function() {
+
+	if(this.endP - this.startP < this.corner_drag_thresh) {
+
+		if(this._enabledCornerDrag || this._enabledCornerDrag === null) {
+
+			this._disableCornerDrag();
+
+		}
+
+	} else {
+
+		if(!this._enabledCornerDrag || this._enabledCornerDrag === null) {
+
+			this._enableCornerDrag();
+
+		}
+
+	}
+
+};
+
+
+RangeSlider.prototype._updateCornerColors = function() {
+
+	if(!this._enabledCornerDrag) {
+
+		this.corner_min.strokeColor = this.strokeColor;
+		this.corner_max.strokeColor = this.strokeColor;
+
+	} else {
+
+		this.corner_min.onactiveend();
+		this.corner_max.onactiveend();
+
+	}
+
 };
 
 
