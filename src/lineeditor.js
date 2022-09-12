@@ -2,17 +2,23 @@ var ControlPoint = require('./controlpoint.js');
 var Line = require('./line.js');
 
 
-function SplineEditor(graph) {
+function LineEditor(graph) {
 
 	this.line = new Line();
 	this.controlpoints = [];
+
+	this.line.points = this.controlpoints;
 
 	this.graph = graph;
 
 }
 
 
-SplineEditor.prototype.draw = function(context, toX, toY) {
+LineEditor.prototype.draw = function(context, toX, toY) {
+
+	this.controlpoints.sort(function(a, b) {
+		return a.x - b.x;
+	});
 
 	this.line.draw(context, toX, toY);
 
@@ -22,7 +28,7 @@ SplineEditor.prototype.draw = function(context, toX, toY) {
 
 };	
 
-SplineEditor.prototype.addControlPoint = function(x, y) {
+LineEditor.prototype.addControlPoint = function(x, y) {
 
 	cp = new ControlPoint(x, y, this, this.graph);
 
@@ -30,7 +36,7 @@ SplineEditor.prototype.addControlPoint = function(x, y) {
 	this.graph.mousecontrol.addObject(cp);
 };
 
-SplineEditor.prototype.removeControlPoint = function(o) {
+LineEditor.prototype.removeControlPoint = function(o) {
 
 	this.graph.mousecontrol.removeObject(o);
 
@@ -42,9 +48,9 @@ SplineEditor.prototype.removeControlPoint = function(o) {
 };
 
 
-SplineEditor.prototype.toBuffer = function() {
+LineEditor.prototype.toBuffer = function() {
 
 };
 
 
-module.exports = SplineEditor;
+module.exports = LineEditor;
