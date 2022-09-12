@@ -7,7 +7,7 @@ FORCE:
 
 all: jshint test build
 
-test:
+test: FORCE
 	@NODE_ENV=test ./node_modules/.bin/mocha --recursive --reporter $(REPORTER) --timeout 3000
 
 jshint:
