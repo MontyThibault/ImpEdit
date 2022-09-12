@@ -6,6 +6,9 @@ function ReferenceLines(principal_axis, secondary_axis) {
 	this.xRef = new ReferenceLinesAxis(principal_axis, secondary_axis);
 	this.yRef = new ReferenceLinesAxis(secondary_axis, principal_axis);
 
+	this.xRef.minimum_label_distance = 60;
+	this.yRef.minimum_label_distance = 25;
+
 }
 
 

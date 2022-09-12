@@ -17,6 +17,8 @@ window.onresize = function() {
 	graph_canvas.width = window.innerWidth;
 	graph_canvas.height = 500;
 
+	graph.needsUpdate = true;
+
 	draw();
 };
 
