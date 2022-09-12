@@ -36,6 +36,8 @@ ControlPoint.prototype.distanceTo = function(x, y) {
 ControlPoint.prototype.ondrag = function(x, y) {
 	this.x = this.graph.xAxis.canvasToGraph(x);
 	this.y = this.graph.yAxis.canvasToGraph(y);
+
+	this.editor.sort();
 };
 
 ControlPoint.prototype.onactivestart = function() {
