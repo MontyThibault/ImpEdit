@@ -654,13 +654,10 @@ function debounce(f, delay) {
 function Graph(canvas) {
 	this.canvas = canvas;
 
-	this.xAxis = new Axis(true, 0, 10, function() { return canvas.width; });
-	this.yAxis = new Axis(false, 0, 10, function() { return canvas.height; });
+	this.xAxis = new Axis(true, -5, 5, function() { return canvas.width; });
+	this.yAxis = new Axis(false, -5, 5, function() { return canvas.height; });
 
 	this.reference = new ReferenceLines(this.xAxis, this.yAxis);
-
-	// this.xAxisReference = new ReferenceLinesAxis(this.xAxis, this.yAxis);
-	// this.yAxisReference = new ReferenceLinesAxis(this.yAxis, this.xAxis);
 
 	this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis);
 	this.yAxisRange = new RangeSlider(this.yAxis, this.xAxis);
@@ -669,13 +666,10 @@ function Graph(canvas) {
 	this.mousecontrol = new MouseControl(this);
 	this.lineeditor = new LineEditor(this);
 
-
-	///
-	this.lineeditor.addControlPoint(5, 5);
+	this.lineeditor.addControlPoint(0, 0);
 
 	this.mousecontrol.addObject(this.xAxisRange);
 	this.mousecontrol.addObject(this.yAxisRange);
-	///
 
 
 	canvas.onmousemove = pdsc(this.mousecontrol, 
@@ -687,10 +681,22 @@ function Graph(canvas) {
 	canvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
 
 	canvas.onmouseout = canvas.onmouseup;
+
+
+	this.needsUpdate = true;
 }
 
 
 Graph.prototype.draw = function(context) {
+
+	if(!this.needsUpdate) {
+		return;
+	}
+
+
+	context.fillStyle = '#F5F5F5';
+	context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
 
 	var xAxis = this.xAxis;
 	var yAxis = this.yAxis;
@@ -705,23 +711,32 @@ Graph.prototype.draw = function(context) {
 	this.yAxisRange.draw(context, toX, toY);
 
 	this.lineeditor.draw(context, toX, toY);
+
+
+	this.needsUpdate = false;
 };
 
 
 Graph.prototype.zoomIn = function() {
 	this.xAxis.zoomIn();
 	this.yAxis.zoomIn();
+
+	this.needsUpdate = true;
 };
 
 Graph.prototype.zoomOut = function() {
 	this.xAxis.zoomOut();
 	this.yAxis.zoomOut();
+
+	this.needsUpdate = true;
 };
 
 Graph.prototype.pan = function(diffX, diffY) {
 
 	this.xAxis.panCanvas(diffX);
 	this.yAxis.panCanvas(diffY);
+
+	this.needsUpdate = true;
 };
 
 
@@ -839,9 +854,6 @@ window.onresize = function() {
 };
 
 function draw() {
-
-	graph_context.fillStyle = '#F5F5F5';
-	graph_context.fillRect(0, 0, graph_canvas.width, graph_canvas.height);
 
 	graph.draw(graph_context);
 	requestAnimationFrame(draw);
@@ -988,6 +1000,9 @@ MouseControl.prototype._setActive = function(o) {
 		if(o !== false) {
 			o.onactivestart();
 		}
+
+
+		this.graph.needsUpdate = true;
 	}
 
 	this.active = o;
@@ -1014,6 +1029,8 @@ MouseControl.prototype.onmousemove = function(e) {
 		var y = this._getY(e);
 
 		this.active.ondrag(x, y);
+		this.graph.needsUpdate = true;
+
 	
 	} else if(this.mousedown) {
 

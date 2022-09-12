@@ -21,9 +21,6 @@ window.onresize = function() {
 
 function draw() {
 
-	graph_context.fillStyle = '#F5F5F5';
-	graph_context.fillRect(0, 0, graph_canvas.width, graph_canvas.height);
-
 	graph.draw(graph_context);
 	requestAnimationFrame(draw);
 

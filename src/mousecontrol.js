@@ -77,6 +77,9 @@ MouseControl.prototype._setActive = function(o) {
 		if(o !== false) {
 			o.onactivestart();
 		}
+
+
+		this.graph.needsUpdate = true;
 	}
 
 	this.active = o;
@@ -103,6 +106,8 @@ MouseControl.prototype.onmousemove = function(e) {
 		var y = this._getY(e);
 
 		this.active.ondrag(x, y);
+		this.graph.needsUpdate = true;
+
 	
 	} else if(this.mousedown) {
 

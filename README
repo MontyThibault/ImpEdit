@@ -1,15 +1,15 @@
 To do:
 
-
 Set up a window resize observer system instead of querying every frame.
-Set up an update hierarchy instead of drawing every frame.
 
 
 Create limits for editor elements, distinct from the window limits.
+Implement viewport scaling from handle corners.
+
 
 Implement toBuffer in lineeditor.js
 Begin on Laplace editor.
 
 
-Hook up convolver with graph editor
+Hook up convolver with graph editor (convolver currently doesn't work for an unknown reason)
 Fix clicking bug with FFT Low-pass
