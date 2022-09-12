@@ -627,6 +627,18 @@ module.exports = function(audio) {
 	var params = {
 
 		'Convolution Enabled': true,
+		'Auto-Update': true,
+		'Update Interval': 10,
+
+
+		// We must add or remove the folder.
+
+		// 'Manual Update': function() {
+
+
+
+		// },
+
 		'Normalization Enabled': true,
 		'FFT Enabled': false,
 		'Gain': 0.1,
@@ -1015,7 +1027,7 @@ class Axis {
 
 
 module.exports = Axis;
-},{"./rangeslider.js":25}],6:[function(require,module,exports){
+},{"./rangeslider.js":26}],6:[function(require,module,exports){
 class BufferLine {
 
 	constructor(buffer, samplerate) {
@@ -1542,9 +1554,9 @@ class FrequencyGraph extends Graph {
 	}
 
 
-	copyToCanvas() {
+	copyToCanvas(context) {
 
-		super.copyToCanvas();
+		super.copyToCanvas(context);
 
 		this.onscreen3dContext.clearRect(0, 0, this.onscreen3dCanvas.width, this.onscreen3dCanvas.height);
 		this.onscreen3dContext.drawImage(this.canvas3d, 0, 0, this.canvas3d.width, this.canvas3d.height);
@@ -1842,7 +1854,7 @@ class FrequencyGraph extends Graph {
 
 module.exports = FrequencyGraph;
 
-},{"./axis.js":5,"./fShaderGLSL.js":11,"./graph.js":13,"./hzeditor.js":14,"./logaxis.js":17,"./vShaderGLSL.js":28}],13:[function(require,module,exports){
+},{"./axis.js":5,"./fShaderGLSL.js":11,"./graph.js":13,"./hzeditor.js":14,"./logaxis.js":17,"./vShaderGLSL.js":29}],13:[function(require,module,exports){
 var MouseControl = require('./mousecontrol.js');
 var ReferenceLines = require('./referencelines.js');
 var RangeSlider = require('./rangeslider.js');
@@ -1893,7 +1905,8 @@ class Graph {
 		this.onscreenCanvas = onscreenCanvas;
 		this.onscreenContext = onscreenCanvas.getContext('2d');
 
-		this.mousecontrol = new MouseControl(this);
+		this.mousecontrol = new MouseControl(this, onscreenCanvas);
+
 
 		this.vizIR = [];
 
@@ -1936,7 +1949,7 @@ class Graph {
 
 
 		if(!this.needsUpdate) {
-			return;
+			return false;
 		}
 
 		var xAxis = this.xAxis;
@@ -1948,17 +1961,18 @@ class Graph {
 
 
 		this._drawElements(this.context, toX, toY);
-		this.copyToCanvas();
 
 		this.needsUpdate = false;
+
+		return true;
 
 	}
 
 
-	copyToCanvas() {
+	copyToCanvas(context) {
 
-		this.onscreenContext.clearRect(0, 0, this.onscreenCanvas.width, this.onscreenCanvas.height);
-		this.onscreenContext.drawImage(this.canvas, 0, 0, this.canvas.width, this.canvas.height);
+		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		context.drawImage(this.canvas, 0, 0, this.canvas.width, this.canvas.height);
 
 	}
 
@@ -2014,9 +2028,9 @@ class Graph {
 
 	mouseBindings(canvas) {
 
-		canvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
-		canvas.ondblclick = pdsc(this.mousecontrol, this.mousecontrol.ondblclick);
-		canvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
+		this.onscreenCanvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
+		this.onscreenCanvas.ondblclick = pdsc(this.mousecontrol, this.mousecontrol.ondblclick);
+		this.onscreenCanvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
 
 
 		var that = this;
@@ -2038,7 +2052,7 @@ class Graph {
 }
 
 module.exports = Graph;
-},{"./mousecontrol.js":19,"./rangeslider.js":25,"./referencelines.js":26}],14:[function(require,module,exports){
+},{"./mousecontrol.js":19,"./rangeslider.js":26,"./referencelines.js":27}],14:[function(require,module,exports){
 var PointEditor = require('./pointeditor.js');
 var OscillatorPoint = require('./oscillatorPoint.js');
 
@@ -2076,6 +2090,14 @@ class HzEditor extends PointEditor {
 		this.addObserver(function() {
 
 			this.toBuffer();
+
+		});
+
+
+		this.addObserver(function() {
+
+			this.subEditor.graph.needsUpdate = true;
+			this.subEditor0.graph.needsUpdate = true;
 
 		});
 
@@ -2228,7 +2250,7 @@ class HzEditor extends PointEditor {
 
 
 module.exports = HzEditor;
-},{"./oscillatorPoint.js":22,"./pointeditor.js":23}],15:[function(require,module,exports){
+},{"./oscillatorPoint.js":23,"./pointeditor.js":24}],15:[function(require,module,exports){
 var Graph = require('./graph.js');
 var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
@@ -2465,7 +2487,7 @@ class LineEditor extends PointEditor {
 
 module.exports = LineEditor;
 
-},{"./pointeditor.js":23,"./pointline.js":24}],17:[function(require,module,exports){
+},{"./pointeditor.js":24,"./pointline.js":25}],17:[function(require,module,exports){
 var Axis = require('./axis.js');
 
 
@@ -2634,18 +2656,27 @@ var OffsetGraph = require('./offsetgraph.js');
 
 var Audio = require("./audio.js");
 var attachAudioDOM = require("./audioDOM.js");
+var oscillatorDOM = require('./oscillatorDOM.js');
 var BufferSum = require('./buffersum.js');
 
 
 var HzEditor = require('./hzeditor.js');
 
-var ir_canvas = document.getElementById('ir_graph');
-var fg_canvas2d = document.getElementById('fg_graph2d');
-var fg_canvas3d = document.getElementById('fg_graph3d');
-var fg_div = document.getElementById('fg_div');
-var og_canvas = document.getElementById('og_graph');
+var ir_canvas = document.getElementById('ir_graph'),
+	fg_canvas2d = document.getElementById('fg_graph2d'),
+	fg_canvas3d = document.getElementById('fg_graph3d'),
+	fg_div = document.getElementById('fg_div'),
+	og_canvas = document.getElementById('og_graph');
 
 
+var ir_context = ir_canvas.getContext('2d'),
+	fg_context = fg_canvas2d.getContext('2d'),
+	og_context = og_canvas.getContext('2d');
+
+
+
+
+// Canvas setup
 
 
 var ir = new IRGraph(ir_canvas);
@@ -2655,13 +2686,14 @@ var og = new OffsetGraph(og_canvas);
 
 var hz_editor = new HzEditor(fg, og);
 
+
 fg.editor = hz_editor.subEditor;
 og.editor = hz_editor.subEditor0;
 
 
-ir.mouseBindings(ir_canvas);
-fg.mouseBindings(fg_canvas2d);
-og.mouseBindings(og_canvas);
+ir.mouseBindings();
+fg.mouseBindings();
+og.mouseBindings();
 
 
 
@@ -2699,7 +2731,40 @@ window.onresize = function() {
 
 
 
+function draw() {
 
+	requestAnimationFrame(draw);
+
+
+	if(ir.draw()) {
+
+		ir.copyToCanvas(ir_context);
+
+	}
+	
+
+	if(og.draw()) {
+
+		og.copyToCanvas(og_context);
+
+	}
+	
+
+	if(fg.draw()) {
+
+		fg.copyToCanvas(fg_context);
+
+	}
+
+}
+
+
+window.onload = window.onresize;
+window.onfocus = window.onresize;
+
+
+
+// Buffers & audio setup
 
 
 var totalBuffer = new BufferSum(hz_editor, ir.editor);
@@ -2707,9 +2772,6 @@ var totalBuffer = new BufferSum(hz_editor, ir.editor);
 ir.setVizIR(totalBuffer.buffer);
 fg.setVizIR(totalBuffer.buffer);
 
-
-
-//////////////////////////
 
 
 var audio = new Audio();
@@ -2740,13 +2802,13 @@ function throttle(fn, threshhold, scope) {
 
 
 
-
 totalBuffer.addObserver(function() {
 
 	// Dirac-delta
 	this.buffer[0] = 1;
 
 });
+
 
 
 totalBuffer.addObserver(throttle(function() {
@@ -2770,233 +2832,14 @@ totalBuffer.addObserver(function() {
 });
 
 
-hz_editor.addObserver(function() {
-
-	this.subEditor.graph.needsUpdate = true;
-	this.subEditor0.graph.needsUpdate = true;
-
-});
-
-
-
-
-
-function draw() {
-
-	requestAnimationFrame(draw);
-
-
-	ir.draw();
-	fg.draw();
-	og.draw();
-
-	
-}
-
-
-window.onload = window.onresize;
-window.onfocus = window.onresize;
-
-
-
-
-/////////////////
-
-
-
-var gui = new dat.GUI({
-
-	width: 400
-
-});
-
-
-var i = 0;
-
-
-
-function addControlPointToGUI(op) {
-
-	var f = gui.addFolder('CP ' + i++);
-
-	var op = op || hz_editor.addControlPointDefault();
-	op.fname = f.name;
-
-
-
-	f.sendFreqToBufferOverride = false;
-
-
-	var freqC = f.add(op.cp, 'x', fg.xAxis.minLimit, fg.xAxis.maxLimit).onChange(f.updateFreq).name('Frequency');
-
-	freqC.log = true;
-	freqC.updateDisplay();
-
-	f.updateFreq = function() {
-
-		if(f.sendFreqToBufferOverride) {
-
-			audio.oscillatorNode.frequency.value = freqC.getValue();
-
-		}
-
-	};
-
-
-	var dampC = f.add(op.cp, 'y', fg.yAxis.minLimit, fg.yAxis.maxLimit).name('Damping');
-	var phaseC = f.add(op.cp0, 'x', og.xAxis.minLimit, og.xAxis.maxLimit).name('Phase');
-	var ampC = f.add(op.cp0, 'y', og.yAxis.minLimit, og.yAxis.maxLimit).name('Amplitude');
-
-
-	f.addColor(op.cp, 'nonactiveColor').onChange(function(value) {
-
-		op.cp0.nonactiveColor = value;
-
-
-		// Let us assume that the point is not active while the user is
-		// changing the color.
-
-		op.cp.strokeColor = op.cp.nonactiveColor;
-		op.cp0.strokeColor = op.cp.nonactiveColor;
-
-	}).name('Color').listen();
-
-
-
-	// These are broken in the event that the cp0 value is changed from
-	// elsewhere than this GUI.
-
-	f.add(op.cp, 'outline').onChange(function(value) {
-
-		op.cp0.outline = value;
-
-	}).name('Outline');
-
-
-	f.add(op, 'disabled').name('Disable');
-
-
-	f.add({
-
-		'Toggle Tone': false
-
-
-	}, 'Toggle Tone').onChange(function(value) {
-
-
-		f.sendFreqToBufferOverride = value;
-		audio.oscillatorOverride = value;
-		audio.reconnect();
-
-
-		// Propagate change to buffer override (see freqC controller above)
-
-		freqC.setValue(freqC.getValue());
-
-
-	});
-
-
-
-	f.onChange(function() {
-
-		hz_editor.notifyObservers();
-
-	});
-
-
-	f.onFinishChange(function() {
-
-		hz_editor.notifyObservers();
-
-	});
-
-
-
-	f.add({
-
-		'removePoint': function() {
-
-			hz_editor.removeControlPoint(op);
-
-		}
-
-	}, 'removePoint').name('Remove Oscillator');
-
-
-}
-
-
-hz_editor.addObserver(function() {
-
-	for(var i in gui.__folders) {
-
-		var f = gui.__folders[i];
-
-		f.updateDisplay();
-
-
-		if(f.updateFreq) {
-
-			f.updateFreq();
-
-		}
-
-	}
-
-});
-
-
-
-gui.add({
-
-	'newControlPoint': addControlPointToGUI
-
-}, 'newControlPoint').name('New Oscillator');
-
-
-
-
-
-function amendAddControlPoint(graph) {
-
-	var f = graph.addControlPoint;
-
-	graph.addControlPoint = function() {
-
-		var oscillatorPoint = f.apply(graph, arguments);
-
-		addControlPointToGUI(oscillatorPoint);
-
-		return oscillatorPoint;
-
-	}
-
-}
-
-amendAddControlPoint(fg);
-amendAddControlPoint(og);
-
-
-
-var f = hz_editor.removeControlPoint;
-
-hz_editor.removeControlPoint = function(op) {
-
-	gui.removeFolder(op.fname);
-	f.call(hz_editor, op);
-
-};
-
-
-
-
+oscillatorDOM(ir, fg, og, hz_editor);
 attachAudioDOM(audio);
-
-},{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./checkchrome.js":8,"./frequencygraph.js":12,"./hzeditor.js":14,"./irgraph.js":15,"./offsetgraph.js":21}],19:[function(require,module,exports){
+},{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./checkchrome.js":8,"./frequencygraph.js":12,"./hzeditor.js":14,"./irgraph.js":15,"./offsetgraph.js":21,"./oscillatorDOM.js":22}],19:[function(require,module,exports){
 class MouseControl {
 
-	constructor(graph) {
+	constructor(graph, canvas) {
+
+		this.canvas = canvas;
 
 		this.active = false;
 		this.mousedown = false;
@@ -3015,13 +2858,13 @@ class MouseControl {
 
 	_getX(e) {
 
-		return e.clientX - this.graph.onscreenCanvas.getBoundingClientRect().left;
+		return e.clientX - this.canvas.getBoundingClientRect().left;
 
 	}
 
 	_getY(e) {
 
-		return e.clientY - this.graph.onscreenCanvas.getBoundingClientRect().top;
+		return e.clientY - this.canvas.getBoundingClientRect().top;
 		
 	}
 
@@ -3281,6 +3124,195 @@ class OffsetGraph extends Graph {
 
 module.exports = OffsetGraph;
 },{"./axis.js":5,"./graph.js":13,"./logaxis.js":17}],22:[function(require,module,exports){
+module.exports = function(ir, fg, og, hz_editor) {
+
+
+	var gui = new dat.GUI({
+
+		width: 400
+
+	});
+
+
+	var i = 0;
+
+
+
+	function addControlPointToGUI(op) {
+
+		var f = gui.addFolder('CP ' + i++);
+
+		var op = op || hz_editor.addControlPointDefault();
+		op.fname = f.name;
+
+
+
+		f.sendFreqToBufferOverride = false;
+
+
+		var freqC = f.add(op.cp, 'x', fg.xAxis.minLimit, fg.xAxis.maxLimit).onChange(f.updateFreq).name('Frequency');
+
+		freqC.log = true;
+		freqC.updateDisplay();
+
+		f.updateFreq = function() {
+
+			if(f.sendFreqToBufferOverride) {
+
+				audio.oscillatorNode.frequency.value = freqC.getValue();
+
+			}
+
+		};
+
+
+		var dampC = f.add(op.cp, 'y', fg.yAxis.minLimit, fg.yAxis.maxLimit).name('Damping');
+		var phaseC = f.add(op.cp0, 'x', og.xAxis.minLimit, og.xAxis.maxLimit).name('Phase');
+		var ampC = f.add(op.cp0, 'y', og.yAxis.minLimit, og.yAxis.maxLimit).name('Amplitude');
+
+
+		f.addColor(op.cp, 'nonactiveColor').onChange(function(value) {
+
+			op.cp0.nonactiveColor = value;
+
+
+			// Let us assume that the point is not active while the user is
+			// changing the color.
+
+			op.cp.strokeColor = op.cp.nonactiveColor;
+			op.cp0.strokeColor = op.cp.nonactiveColor;
+
+		}).name('Color').listen();
+
+
+
+		// These are broken in the event that the cp0 value is changed from
+		// elsewhere than this GUI.
+
+		f.add(op.cp, 'outline').onChange(function(value) {
+
+			op.cp0.outline = value;
+
+		}).name('Outline');
+
+
+		f.add(op, 'disabled').name('Disable');
+
+
+		f.add({
+
+			'Toggle Tone': false
+
+
+		}, 'Toggle Tone').onChange(function(value) {
+
+
+			f.sendFreqToBufferOverride = value;
+			audio.oscillatorOverride = value;
+			audio.reconnect();
+
+
+			// Propagate change to buffer override (see freqC controller above)
+
+			freqC.setValue(freqC.getValue());
+
+
+		});
+
+
+
+		f.onChange(function() {
+
+			hz_editor.notifyObservers();
+
+		});
+
+
+		f.onFinishChange(function() {
+
+			hz_editor.notifyObservers();
+
+		});
+
+
+
+		f.add({
+
+			'removePoint': function() {
+
+				hz_editor.removeControlPoint(op);
+
+			}
+
+		}, 'removePoint').name('Remove Oscillator');
+
+
+	}
+
+
+	hz_editor.addObserver(function() {
+
+		for(var i in gui.__folders) {
+
+			var f = gui.__folders[i];
+
+			f.updateDisplay();
+
+
+			if(f.updateFreq) {
+
+				f.updateFreq();
+
+			}
+
+		}
+
+	});
+
+
+
+	gui.add({
+
+		'newControlPoint': addControlPointToGUI
+
+	}, 'newControlPoint').name('New Oscillator');
+
+
+
+
+
+	function amendAddControlPoint(graph) {
+
+		var f = graph.addControlPoint;
+
+		graph.addControlPoint = function() {
+
+			var oscillatorPoint = f.apply(graph, arguments);
+
+			addControlPointToGUI(oscillatorPoint);
+
+			return oscillatorPoint;
+
+		}
+
+	}
+
+	amendAddControlPoint(fg);
+	amendAddControlPoint(og);
+
+
+
+	var f = hz_editor.removeControlPoint;
+
+	hz_editor.removeControlPoint = function(op) {
+
+		gui.removeFolder(op.fname);
+		f.call(hz_editor, op);
+
+	};
+
+};
+},{}],23:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 
 
@@ -3316,7 +3348,7 @@ class OscillatorPoint {
 }
 
 module.exports = OscillatorPoint;
-},{"./controlpoint.js":9}],23:[function(require,module,exports){
+},{"./controlpoint.js":9}],24:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 var Observable = require('./observable.js');
 
@@ -3414,7 +3446,7 @@ class PointEditor extends Observable {
 
 
 module.exports = PointEditor;
-},{"./controlpoint.js":9,"./observable.js":20}],24:[function(require,module,exports){
+},{"./controlpoint.js":9,"./observable.js":20}],25:[function(require,module,exports){
 class PointLine {
 
 	constructor() {
@@ -3452,7 +3484,7 @@ class PointLine {
 
 
 module.exports = PointLine;
-},{}],25:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 // Throughout this class, p refers to "principal" and s refers to
 // "secondary", as a generic version of x/y or y/x, depending on the orientation.
 
@@ -4020,7 +4052,7 @@ class RangeSlider {
 
 module.exports = RangeSlider;
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 var ReferenceLinesAxis = require('./referencelinesaxis.js');
 
 
@@ -4143,7 +4175,7 @@ class ReferenceLines {
 
 
 module.exports = ReferenceLines;
-},{"./referencelinesaxis.js":27}],27:[function(require,module,exports){
+},{"./referencelinesaxis.js":28}],28:[function(require,module,exports){
 
 
 class ReferenceLinesAxis {
@@ -4605,7 +4637,7 @@ class ReferenceLinesAxis {
 
 
 module.exports = ReferenceLinesAxis;
-},{}],28:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 module.exports = `
 
 

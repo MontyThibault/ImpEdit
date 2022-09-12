@@ -39,6 +39,14 @@ class HzEditor extends PointEditor {
 		});
 
 
+		this.addObserver(function() {
+
+			this.subEditor.graph.needsUpdate = true;
+			this.subEditor0.graph.needsUpdate = true;
+
+		});
+
+
 
 
 		var old_f3 = this.subEditor.removeControlPoint;
