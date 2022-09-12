@@ -605,6 +605,20 @@ class Axis {
 	}
 
 
+	graphToCanvasInterval(refPoint, interval) {
+
+		return this.graphToCanvas(interval) - this.graphToCanvas(0);
+
+	}
+
+
+	canvasToGraphInterval(refPoint, interval) {
+
+		return this.canvasToGraph(interval) - this.canvasToGraph(0);
+
+	}
+
+
 	zoomIn() {
 
 		var min = this.min * 0.9 + this.max * 0.1;
@@ -1726,6 +1740,34 @@ class LogAxis extends Axis {
 
 	}
 
+
+	graphToCanvasInterval(refPoint, interval) {
+
+		var epsilon = (this.max - this.min) / 1000;
+
+		var cd = this.graphToCanvas(refPoint + epsilon) - this.graphToCanvas(refPoint);
+
+		cd /= epsilon;
+		cd *= interval;
+
+		return cd;
+
+	}
+
+
+	canvasToGraphInterval(refPoint, interval) {
+
+		var epsilon = 1e-3;
+
+		var gd = this.canvasToGraph(refPoint + epsilon) - this.canvasToGraph(refPoint);
+
+		gd /= epsilon;
+		gd *= interval;
+
+		return gd;
+
+	}
+
 }
 
 
@@ -2606,13 +2648,9 @@ function ReferenceLines(principal_axis, secondary_axis) {
 
 ReferenceLines.prototype._getScaleFactor = function(point, ref) {
 
-	var epsilon = 1e-10;
+	var span = ref.axis.canvasToGraphInterval(point, ref.axis.get_full_extent());
 
-	var rate = (ref.axis.canvasToGraph(point + epsilon) - ref.axis.canvasToGraph(point)) / epsilon;
-
-	var spanAtRate = rate * ref.axis.get_full_extent();
-
-	return Math.log(spanAtRate) / Math.log(ref.line_multiples);
+	return Math.log(span) / Math.log(ref.line_multiples);
 
 }
 
@@ -2647,13 +2685,16 @@ ReferenceLines.prototype._getDrawingArray = function(ref) {
 	var a = [];
 
 	for(var scale = scalefactorMin; scale < scalefactorMax; scale++) {
-		
 
-		// Order by scale, not shade
 
-		a.push([scale, scale, function(context, toX, toY, scale) {
-			ref.drawLines(context, toX, toY, scale);
-		}]);
+		a.push([scale, function(scale, context, toX, toY) {
+			ref.drawLinesAtScale(context, toX, toY, scale);
+		}.bind(this, scale)]);
+
+
+		a.push([scale - 100, function(scale, context, toX, toY) {
+			ref.drawLabelsAtScale(context, toX, toY, scale);
+		}.bind(this, scale)]);
 
 	}
 
@@ -2680,7 +2721,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 	for(var i = 0; i < a.length; i++) {
 
 		// Draw
-		a[i][2](context, toX, toY, a[i][1]);
+		a[i][1](context, toX, toY);
 	}
 
 
@@ -2688,8 +2729,8 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 	this.xRef.drawSpecialLines(context, toX, toY);
 	this.yRef.drawSpecialLines(context, toX, toY);
 
-	this.xRef.drawLabels(context, toX, toY);
-	this.yRef.drawLabels(context, toX, toY);
+	this.xRef.drawSpecialLabels(context, toX, toY);
+	this.yRef.drawSpecialLabels(context, toX, toY);
 
 
 
@@ -2724,20 +2765,13 @@ ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
 		end = Math.floor(this.axis.max / interval) * interval;
 
 
-	var pixelThresh = 3;
-
-
 	for(var j = begin; j <= end; j += interval) {
 
-
-		if(this.axis.graphToCanvas(j + interval) - this.axis.graphToCanvas(j) < pixelThresh) {
+		if(f.call(this, j)) {
 
 			break;
 
 		}
-
-
-		f.call(this, j);
 
 	}
 
@@ -2750,15 +2784,7 @@ ReferenceLinesAxis.prototype.getShade = function(scale, refPoint) {
 
 	var interval = Math.pow(this.line_multiples, scale);
 
-
-	// Change this to be more instantaneous 
-
-	var epsilon = 1e-10;
-
-	var cd = this.axis.graphToCanvas(refPoint + epsilon) - this.axis.graphToCanvas(refPoint);
-
-	cd /= epsilon;
-	cd *= interval;
+	var cd = this.axis.graphToCanvasInterval(refPoint, interval);
 
 
 	// At this distance, lines appear completely black.
@@ -2796,7 +2822,7 @@ ReferenceLinesAxis.prototype.drawLine = function(context, toX, toY, j) {
 
 // Eliminate duplication in this method
 
-ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale) {
+ReferenceLinesAxis.prototype.drawLinesAtScale = function(context, toX, toY, scale) {
 	
 	var interval = Math.pow(this.line_multiples, scale);
 
@@ -2821,7 +2847,9 @@ ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale) {
 			for(var i = 0; i < this.specialLabels.length; i++) {
 
 				if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
-					return;
+
+					return false;
+
 				}
 
 			}
@@ -2838,15 +2866,26 @@ ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale) {
 	} else if(this.axis.type === this.axis.TYPE_LOG) {
 
 
+		var pixelThresh = 3;
 
-			var that = this;
+
+		var that = this;
 		this._iterateIntervalOverAxis(interval, function(j) {
 
 			for(var i = 0; i < this.specialLabels.length; i++) {
 
 				if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
-					return;
+
+					return false;
+
 				}
+
+			}
+
+
+			if(this.axis.graphToCanvasInterval(j, interval) < pixelThresh) {
+
+				return true;
 
 			}
 
@@ -2940,14 +2979,11 @@ ReferenceLinesAxis.prototype.drawLabel = function(context, toX, toY, offset, tex
 
 };
 
-ReferenceLinesAxis.prototype.drawLabels = function(context, toX, toY) {
 
-	var min_graph_distance = this.axis.canvasToGraph(this.minimum_label_distance) 
-			- this.axis.canvasToGraph(0);
+ReferenceLinesAxis.prototype.drawLabelsAtScale = function(context, toX, toY, scale) {
 
-	var scalefactor = Math.log(min_graph_distance) / Math.log(this.line_multiples);
 
-	var interval = Math.pow(this.line_multiples, Math.ceil(scalefactor));
+	var interval = Math.pow(this.line_multiples, scale);
 
 
 	var that = this;
@@ -2956,24 +2992,43 @@ ReferenceLinesAxis.prototype.drawLabels = function(context, toX, toY) {
 		for(var i = 0; i < that.specialLabels.length; i++) {
 
 			var d = that.axis.graphToCanvas(j) - that.axis.graphToCanvas(that.specialLabels[i][0]);
-			if(Math.abs(d) < that.minimum_label_distance) {
+			
+			var intersectSpecialLabel = Math.abs(d) < that.minimum_label_distance;
 
-				return;
+
+			if(intersectSpecialLabel) {
+
+				return false;
 
 			}
 
 		}
 
+
+		d = that.axis.graphToCanvasInterval(j, interval);
+
+		var intersectOtherLabels = Math.abs(d) < that.minimum_label_distance;
+
+		if(intersectOtherLabels) {
+
+			return true;
+
+		}
+
+
 		that.drawLabel(context, toX, toY, j, (Math.round(j * 1e10) / 1e10).toExponential());
 
 	});
 
+};
 
 
-	for(var i = 0; i < that.specialLabels.length; i++) {
+ReferenceLinesAxis.prototype.drawSpecialLabels = function(context, toX, toY) {
 
-		var sl = that.specialLabels[i];
-		that.drawLabel(context, toX, toY, sl[0], sl[1]);
+	for(var i = 0; i < this.specialLabels.length; i++) {
+
+		var sl = this.specialLabels[i];
+		this.drawLabel(context, toX, toY, sl[0], sl[1]);
 
 	}
 

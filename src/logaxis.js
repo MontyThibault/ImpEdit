@@ -37,6 +37,34 @@ class LogAxis extends Axis {
 
 	}
 
+
+	graphToCanvasInterval(refPoint, interval) {
+
+		var epsilon = (this.max - this.min) / 1000;
+
+		var cd = this.graphToCanvas(refPoint + epsilon) - this.graphToCanvas(refPoint);
+
+		cd /= epsilon;
+		cd *= interval;
+
+		return cd;
+
+	}
+
+
+	canvasToGraphInterval(refPoint, interval) {
+
+		var epsilon = 1e-3;
+
+		var gd = this.canvasToGraph(refPoint + epsilon) - this.canvasToGraph(refPoint);
+
+		gd /= epsilon;
+		gd *= interval;
+
+		return gd;
+
+	}
+
 }
 
 
