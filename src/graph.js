@@ -1,6 +1,7 @@
 var SplineEditor = require('./splineeditor.js');
 var Axis = require('./axis.js');
 var MouseControl = require('./mousecontrol.js');
+var ReferenceLines = require('./referencelines.js');
 
 
 function prevent_default_set_context(that, f) {
@@ -36,6 +37,10 @@ function Graph(canvas) {
 	this.xAxis = new Axis(true, 0, 10, function() { return canvas.width; });
 	this.yAxis = new Axis(false, 0, 10, function() { return canvas.height; });
 
+	this.xAxisReference = new ReferenceLines(this.xAxis, this.yAxis);
+	this.yAxisReference = new ReferenceLines(this.yAxis, this.xAxis);
+
+
 	this.mousecontrol = new MouseControl(this);
 	this.splineeditor = new SplineEditor(this);
 
@@ -62,13 +67,15 @@ Graph.prototype.draw = function(context) {
 		toY = function(x) { return yAxis.graphToCanvas.call(yAxis, x); };
 
 
-	this.xAxis.drawLines(context, toX, toY);
-	this.yAxis.drawLines(context, toX, toY);
-	this.xAxis.drawLabels(context, toX, toY);
-	this.yAxis.drawLabels(context, toX, toY);
+	this.xAxisReference.draw(context, toX, toY);
+	this.yAxisReference.draw(context, toX, toY);
+
+	// this.xAxis.drawLines(context, toX, toY);
+	// this.yAxis.drawLines(context, toX, toY);
+	// this.xAxis.drawLabels(context, toX, toY);
+	// this.yAxis.drawLabels(context, toX, toY);
 
 	this.splineeditor.draw(context, toX, toY);
-
 };
 
 

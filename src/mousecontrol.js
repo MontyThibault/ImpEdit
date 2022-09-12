@@ -7,7 +7,7 @@ function MouseControl(graph) {
 	this.graph = graph;
 
 	// Pixels from nearest object before it's not active.
-	this.threshold = 10;
+	this.threshold = 15;
 
 	this.oldClientX = 0;
 	this.oldClientY = 0;
@@ -80,7 +80,11 @@ MouseControl.prototype.removeObject = function(o) {
 MouseControl.prototype.onmousemove = function(e) {
 
 	if(this.active && this.mousedown) {
-		this.active.ondrag(e);
+
+		var x = this._getX(e);
+		var y = this._getY(e);
+
+		this.active.ondrag(x, y);
 	
 	} else if(this.mousedown) {
 

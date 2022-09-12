@@ -48,8 +48,6 @@ Axis.prototype.zoomIn = function() {
 
 	this.min = min;
 	this.max = max;
-
-	console.log(min, max);
 };
 
 Axis.prototype.zoomOut = function() {
@@ -110,8 +108,9 @@ ControlPoint.prototype.distanceTo = function(x, y) {
 };
 
 
-ControlPoint.prototype.ondrag = function(e) {
-
+ControlPoint.prototype.ondrag = function(x, y) {
+	this.x = this.graph.xAxis.canvasToGraph(x);
+	this.y = this.graph.yAxis.canvasToGraph(y);
 };
 
 ControlPoint.prototype.onactivestart = function() {
@@ -131,6 +130,7 @@ module.exports = ControlPoint;
 var SplineEditor = require('./splineeditor.js');
 var Axis = require('./axis.js');
 var MouseControl = require('./mousecontrol.js');
+var ReferenceLines = require('./referencelines.js');
 
 
 function prevent_default_set_context(that, f) {
@@ -166,6 +166,10 @@ function Graph(canvas) {
 	this.xAxis = new Axis(true, 0, 10, function() { return canvas.width; });
 	this.yAxis = new Axis(false, 0, 10, function() { return canvas.height; });
 
+	this.xAxisReference = new ReferenceLines(this.xAxis, this.yAxis);
+	this.yAxisReference = new ReferenceLines(this.yAxis, this.xAxis);
+
+
 	this.mousecontrol = new MouseControl(this);
 	this.splineeditor = new SplineEditor(this);
 
@@ -192,13 +196,15 @@ Graph.prototype.draw = function(context) {
 		toY = function(x) { return yAxis.graphToCanvas.call(yAxis, x); };
 
 
-	this.xAxis.drawLines(context, toX, toY);
-	this.yAxis.drawLines(context, toX, toY);
-	this.xAxis.drawLabels(context, toX, toY);
-	this.yAxis.drawLabels(context, toX, toY);
+	this.xAxisReference.draw(context, toX, toY);
+	this.yAxisReference.draw(context, toX, toY);
+
+	// this.xAxis.drawLines(context, toX, toY);
+	// this.yAxis.drawLines(context, toX, toY);
+	// this.xAxis.drawLabels(context, toX, toY);
+	// this.yAxis.drawLabels(context, toX, toY);
 
 	this.splineeditor.draw(context, toX, toY);
-
 };
 
 
@@ -230,7 +236,7 @@ Graph.prototype.addControlPoint = function(x, y) {
 
 
 module.exports = Graph;
-},{"./axis.js":1,"./mousecontrol.js":6,"./splineeditor.js":8}],4:[function(require,module,exports){
+},{"./axis.js":1,"./mousecontrol.js":6,"./referencelines.js":8,"./splineeditor.js":9}],4:[function(require,module,exports){
 function Line() {
 }
 
@@ -284,7 +290,7 @@ function MouseControl(graph) {
 	this.graph = graph;
 
 	// Pixels from nearest object before it's not active.
-	this.threshold = 10;
+	this.threshold = 15;
 
 	this.oldClientX = 0;
 	this.oldClientY = 0;
@@ -357,7 +363,11 @@ MouseControl.prototype.removeObject = function(o) {
 MouseControl.prototype.onmousemove = function(e) {
 
 	if(this.active && this.mousedown) {
-		this.active.ondrag(e);
+
+		var x = this._getX(e);
+		var y = this._getY(e);
+
+		this.active.ondrag(x, y);
 	
 	} else if(this.mousedown) {
 
@@ -443,6 +453,76 @@ RangeSlider.prototype.ondblclick = function() {
 
 module.exports = RangeSlider;
 },{}],8:[function(require,module,exports){
+
+
+function ReferenceLines(principal_axis, secondary_axis) {
+	this.axis = principal_axis;
+	this.saxis = secondary_axis;
+
+	// How many small lines between large lines (recursive)
+	this.line_multiples = 10;
+
+	// Some kind of fade factor
+}
+
+
+ReferenceLines.prototype.draw = function(context, toX, toY) {
+
+	var scalefactor = Math.log(Math.abs(this.axis.max - this.axis.min)) / 
+		Math.log(this.line_multiples);
+
+
+	var scales = [Math.floor(scalefactor), Math.floor(scalefactor) - 1];
+	var scalelevels = 2;
+	
+
+
+	function moveTo(x, y) {
+		context.moveTo(toX(x), toY(y));
+	}
+
+	function lineTo(x, y) {
+		context.lineTo(toX(x), toY(y));
+	}
+
+	for(var i = 0; i < scales.length; i++) {
+		var scale = scales[i];
+
+		var shade = Math.min(Math.max(scalefactor - scale, 0), scalelevels)
+			/ scalelevels;
+
+		var hex = Math.floor(shade * 255);
+
+		var color = 'rgb(' + hex + ', ' + hex + ', ' + hex + ')';
+		context.strokeStyle = color;
+
+
+		var offset = Math.pow(this.line_multiples, scale);
+
+		var begin = Math.ceil(this.axis.min / offset) * offset,
+			end = Math.floor(this.axis.max / offset) * offset;
+
+		for(var j = begin; j <= end; j += offset) {
+
+			var startP = j,
+				endP = j,
+				startS = this.saxis.min,
+				endS = this.saxis.max;
+
+			context.beginPath();
+
+			this.axis.orientation(moveTo, startP, startS);
+			this.axis.orientation(lineTo, endP, endS);
+
+			context.stroke();
+
+		}
+	}
+};
+
+
+module.exports = ReferenceLines;
+},{}],9:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 var Line = require('./line.js');
 
@@ -477,7 +557,7 @@ SplineEditor.prototype.addControlPoint = function(x, y) {
 
 SplineEditor.prototype.removeControlPoint = function(o) {
 
-	this.graph.mousecontrol.removeObject(cp);
+	this.graph.mousecontrol.removeObject(o);
 
 	var i = this.controlpoints.indexOf(o);
 

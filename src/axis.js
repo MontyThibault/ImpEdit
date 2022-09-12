@@ -47,8 +47,6 @@ Axis.prototype.zoomIn = function() {
 
 	this.min = min;
 	this.max = max;
-
-	console.log(min, max);
 };
 
 Axis.prototype.zoomOut = function() {
