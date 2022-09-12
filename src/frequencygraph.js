@@ -1,5 +1,5 @@
 var Graph = require('./graph.js');
-
+var HzEditor = require('./hzeditor.js');
 var LogAxis = require('./logaxis.js');
 var Axis = require('./axis.js');
 
@@ -15,8 +15,13 @@ class FrequencyGraph extends Graph {
 		this.yAxis = new Axis(false, 10, 10000, function() { return canvas2d.height; });
 
 		this.yAxis.maxLimit = 10000;
+		this.xAxis.minLimit = -100000;
+		this.xAxis.maxLimit = 100000;
 
 		this.initAxes(this.xAxis, this.yAxis);
+
+
+		this.hzeditor = new HzEditor(this);
 
 
 
@@ -50,6 +55,8 @@ class FrequencyGraph extends Graph {
 		}
 
 		super._drawElements(context, toX, toY);
+
+		this.hzeditor.draw(context, toX, toY);
 
 	}
 
@@ -201,8 +208,8 @@ class FrequencyGraph extends Graph {
 
 					t = float(i) / samplerate;	
 
-					re_sum += exp(graphPosition.x) * cos(graphPosition.y * t * 2.0 * pi) * uIR[i];
-					im_sum += exp(graphPosition.x) * sin(graphPosition.y * t * 2.0 * pi) * uIR[i];
+					re_sum += exp(graphPosition.x * t) * cos(graphPosition.y * t * 2.0 * pi) * uIR[i];
+					im_sum += exp(graphPosition.x * t) * sin(graphPosition.y * t * 2.0 * pi) * uIR[i];
 
 				}
 
@@ -366,9 +373,20 @@ class FrequencyGraph extends Graph {
 
 	getIR(buffer, samplerate) {
 
-		buffer.fill(0);
+		this.hzeditor.toBuffer(buffer, samplerate);
 
 	}
+
+
+	addControlPoint(x, y) {
+
+		var fromX = this.xAxis.canvasToGraph(x),
+			fromY = this.yAxis.canvasToGraph(y);
+
+		this.hzeditor.addControlPoint(fromX, fromY);
+
+	}
+
 
 }
 

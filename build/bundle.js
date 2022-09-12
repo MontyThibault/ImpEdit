@@ -686,8 +686,93 @@ class Axis {
 
 
 module.exports = Axis;
-},{"./rangeslider.js":15}],6:[function(require,module,exports){
+},{"./rangeslider.js":18}],6:[function(require,module,exports){
+class BufferLine {
+
+	constructor(buffer, samplerate) {
+
+		this.buffer = buffer;
+		this.samplerate = samplerate;
+
+	}
+
+
+	draw(context, toX, toY) {
+
+		context.beginPath();
+
+		var sampleStep = 1 / this.samplerate;
+		var pixelsPerSample = toX(sampleStep) - toX(0);
+		var samplesPerPixel = 1 / pixelsPerSample;
+
+
+		var xzero = toX(0);
+
+
+		// if sample step is less than pixel step
+		// draw per-pixel
+
+		if(pixelsPerSample <= 1) {
+
+			context.moveTo(xzero, toY(this.buffer[0]));
+
+
+			for(var i = 1; i < this.buffer.length; i++) {
+
+				// samplesPerPixel = 1 / pixelsPerSample
+
+				var closestIndex = Math.floor(samplesPerPixel * i);
+
+				context.lineTo(xzero + i, toY(this.buffer[closestIndex]));
+
+
+				if(xzero + i > context.canvas.width) {
+
+					break;
+
+				}
+
+			}
+
+		}		
+
+
+		// if sample step is more than pixel step
+		// draw per sample
+
+		if(pixelsPerSample > 1) {
+
+			context.moveTo(xzero, toY(this.buffer[0]));
+
+
+			for(var i = 1; i < this.buffer.length; i++) {
+
+
+				context.lineTo(xzero + pixelsPerSample * i, toY(this.buffer[i]));
+
+
+				if(xzero + pixelsPerSample * i > context.canvas.width) {
+
+					break;
+
+				}
+
+			}
+
+		}
+
+
+		context.stroke();
+
+	}
+
+}
+
+
+module.exports = BufferLine;
+},{}],7:[function(require,module,exports){
 function ControlPoint(x, y, editor, graph) {
+
 	this.x = x;
 	this.y = y;
 
@@ -696,6 +781,7 @@ function ControlPoint(x, y, editor, graph) {
 
 	this.strokeColor;
 	this.onactiveend();
+	
 }
 
 
@@ -723,28 +809,40 @@ ControlPoint.prototype.distanceTo = function(x, y) {
 
 
 ControlPoint.prototype.ondrag = function(x, y) {
+
 	this.x = this.graph.xAxis.canvasToGraph(x);
 	this.y = this.graph.yAxis.canvasToGraph(y);
 
-	this.editor.sort();
+	this.editor.onPointMove();
+
 };
+
 
 ControlPoint.prototype.onactivestart = function() {
+
 	this.strokeColor = '#FF0000';
+
 };
+
 
 ControlPoint.prototype.onactiveend = function() {
+
 	this.strokeColor = '#000000';
+
 };
+
 
 ControlPoint.prototype.ondblclick = function() {
+
 	this.editor.removeControlPoint(this);
+
 };
 
-module.exports = ControlPoint;
-},{}],7:[function(require,module,exports){
-var Graph = require('./graph.js');
 
+module.exports = ControlPoint;
+},{}],8:[function(require,module,exports){
+var Graph = require('./graph.js');
+var HzEditor = require('./hzeditor.js');
 var LogAxis = require('./logaxis.js');
 var Axis = require('./axis.js');
 
@@ -760,8 +858,13 @@ class FrequencyGraph extends Graph {
 		this.yAxis = new Axis(false, 10, 10000, function() { return canvas2d.height; });
 
 		this.yAxis.maxLimit = 10000;
+		this.xAxis.minLimit = -100000;
+		this.xAxis.maxLimit = 100000;
 
 		this.initAxes(this.xAxis, this.yAxis);
+
+
+		this.hzeditor = new HzEditor(this);
 
 
 
@@ -795,6 +898,8 @@ class FrequencyGraph extends Graph {
 		}
 
 		super._drawElements(context, toX, toY);
+
+		this.hzeditor.draw(context, toX, toY);
 
 	}
 
@@ -946,8 +1051,8 @@ class FrequencyGraph extends Graph {
 
 					t = float(i) / samplerate;	
 
-					re_sum += exp(graphPosition.x) * cos(graphPosition.y * t * 2.0 * pi) * uIR[i];
-					im_sum += exp(graphPosition.x) * sin(graphPosition.y * t * 2.0 * pi) * uIR[i];
+					re_sum += exp(graphPosition.x * t) * cos(graphPosition.y * t * 2.0 * pi) * uIR[i];
+					im_sum += exp(graphPosition.x * t) * sin(graphPosition.y * t * 2.0 * pi) * uIR[i];
 
 				}
 
@@ -1111,16 +1216,27 @@ class FrequencyGraph extends Graph {
 
 	getIR(buffer, samplerate) {
 
-		buffer.fill(0);
+		this.hzeditor.toBuffer(buffer, samplerate);
 
 	}
+
+
+	addControlPoint(x, y) {
+
+		var fromX = this.xAxis.canvasToGraph(x),
+			fromY = this.yAxis.canvasToGraph(y);
+
+		this.hzeditor.addControlPoint(fromX, fromY);
+
+	}
+
 
 }
 
 
 module.exports = FrequencyGraph;
 
-},{"./axis.js":5,"./graph.js":8,"./logaxis.js":12}],8:[function(require,module,exports){
+},{"./axis.js":5,"./graph.js":9,"./hzeditor.js":10,"./logaxis.js":13}],9:[function(require,module,exports){
 var MouseControl = require('./mousecontrol.js');
 var ReferenceLines = require('./referencelines.js');
 var RangeSlider = require('./rangeslider.js');
@@ -1272,10 +1388,46 @@ class Graph {
 }
 
 module.exports = Graph;
-},{"./mousecontrol.js":14,"./rangeslider.js":15,"./referencelines.js":16}],9:[function(require,module,exports){
+},{"./mousecontrol.js":15,"./rangeslider.js":18,"./referencelines.js":19}],10:[function(require,module,exports){
+var PointEditor = require('./pointeditor.js');
+
+
+class HzEditor extends PointEditor {
+
+
+	toBuffer(buffer, samplerate) {
+
+		buffer.fill(0);
+
+
+		for(var i = 0; i < this.controlpoints.length; i++) {
+
+			var cp = this.controlpoints[i];
+
+
+			for(var j = 0; j < buffer.length; j++) {
+
+				var t = j / samplerate;
+
+				buffer[j] += Math.cos(cp.y * t * 2 * Math.PI) * Math.exp(cp.x * t);
+
+				// Imaginary: += Math.sin(cp.y * t * 2 * Math.PI) * Math.exp(cp.x * t);
+
+			}
+
+		}
+
+	}
+
+}
+
+
+module.exports = HzEditor;
+},{"./pointeditor.js":16}],11:[function(require,module,exports){
 var Graph = require('./graph.js');
 var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
+var BufferLine = require('./bufferline.js');
 
 
 class IRGraph extends Graph {
@@ -1297,6 +1449,8 @@ class IRGraph extends Graph {
 		this.lineeditor = new LineEditor(this);
 		this.lineeditor.addControlPoint(0, 0);
 
+		this.vizline = new BufferLine(this.vizIR, 96000);
+
 	}
 
 
@@ -1305,6 +1459,9 @@ class IRGraph extends Graph {
 		super._drawElements(context, toX, toY);
 
 		this.lineeditor.draw(context, toX, toY);
+
+
+		this.vizline.draw(context, toX, toY);
 
 	}
 
@@ -1325,161 +1482,146 @@ class IRGraph extends Graph {
 	}
 
 
+	setVizIR(buffer) {
+
+		this.vizline.buffer = buffer;
+
+	}
+
+
 }
 
 
 module.exports = IRGraph;
-},{"./axis.js":5,"./graph.js":8,"./lineeditor.js":11}],10:[function(require,module,exports){
-function Line() {
-	this.points = [];
-	this.color = '#FF0000';
-}
-
-Line.prototype.draw = function(context, toX, toY) {
-
-	context.strokeStyle = this.color;
-
-	context.beginPath();
-
-	context.moveTo(toX(this.points[0].x), toY(this.points[0].y));
-	
-	for(var i = 1; i < this.points.length; i++) {
-		context.lineTo(toX(this.points[i].x), toY(this.points[i].y));
-	}
-
-	context.stroke();
-
-};
-
-module.exports = Line;
-},{}],11:[function(require,module,exports){
-var ControlPoint = require('./controlpoint.js');
-var Line = require('./line.js');
+},{"./axis.js":5,"./bufferline.js":6,"./graph.js":9,"./lineeditor.js":12}],12:[function(require,module,exports){
+var PointEditor = require('./pointeditor.js');
+var PointLine = require('./pointline.js');
 
 
-function LineEditor(graph) {
 
-	this.line = new Line();
+class LineEditor extends PointEditor {
 
-	// This array stays sorted by x-coordinate.
-	this.controlpoints = [];
+	constructor(graph) {
 
-	this.line.points = this.controlpoints;
+		super(graph);
 
-	this.graph = graph;
+		this.pointLine = new PointLine();
+		this.pointLine.points = this.controlpoints;
 
-}
-
-
-LineEditor.prototype.draw = function(context, toX, toY) {
-
-	this.line.draw(context, toX, toY);
-
-	for(var i = 0; i < this.controlpoints.length; i++) {
-		this.controlpoints[i].draw(context, toX, toY);
-	}
-
-};	
-
-LineEditor.prototype.addControlPoint = function(x, y) {
-
-	cp = new ControlPoint(x, y, this, this.graph);
-
-	this.controlpoints.push(cp);
-	this.graph.mousecontrol.addObject(cp);
-
-	this.sort();
-};
-
-LineEditor.prototype.removeControlPoint = function(o) {
-
-	this.graph.mousecontrol.removeObject(o);
-
-	var i = this.controlpoints.indexOf(o);
-
-	if(i > -1) {
-		this.controlpoints.splice(i, 1);
-	}
-
-	this.sort();
-};
-
-
-LineEditor.prototype.sort = function() {
-
-	this.controlpoints.sort(function(a, b) {
-		return a.x - b.x;
-	});
-
-};
-
-
-LineEditor.prototype.toBuffer = function(buffer, samplerate) {
-
-	// We assume this.graph.xAxis is calibrated to seconds.
-
-	if(this.controlpoints.length < 2) {
-		buffer.fill(0);
-		return;
 	}
 
 
-	// cp1 is the control point directly before the current point
-	// cp2 is the control point directly after the current point
-	var cp1 = this.controlpoints[0],
-		cp2 = this.controlpoints[1];
+	draw(context, toX, toY) {
 
-	var cpi = 1;
-	var escape = false;
+		this.pointLine.draw(context, toX, toY);
 
-	for(var i = 0; i < buffer.length; i++) {
+		super.draw(context, toX, toY);
 
-		var time = i / samplerate;
+	}
 
 
-		while(time > cp2.x) {
+	addControlPoint(x, y) {
 
-			cpi++;
+		super.addControlPoint(x, y);
 
-			// If this point is beyond all control points.
-			if(cpi  === this.controlpoints.length) {
-				cpi--;
-				buffer[i] = 0;
+		this.sort();
 
-				escape = true;
-				break;
+	}
+
+
+	removeControlPoint(o) {
+
+		super.removeControlPoint(o);
+
+		this.sort();
+
+	}
+
+
+	sort() {
+
+		this.controlpoints.sort(function(a, b) {
+			return a.x - b.x;
+		});
+
+	}
+
+
+	onPointMove() {
+
+		this.sort();
+
+	}
+
+
+	toBuffer(buffer, samplerate) {
+
+		// We assume this.graph.xAxis is calibrated to seconds.
+
+		if(this.controlpoints.length < 2) {
+			buffer.fill(0);
+			return;
+		}
+
+
+		// cp1 is the control point directly before the current point
+		// cp2 is the control point directly after the current point
+		var cp1 = this.controlpoints[0],
+			cp2 = this.controlpoints[1];
+
+		var cpi = 1;
+		var escape = false;
+
+		for(var i = 0; i < buffer.length; i++) {
+
+			var time = i / samplerate;
+
+
+			while(time > cp2.x) {
+
+				cpi++;
+
+				// If this point is beyond all control points.
+				if(cpi  === this.controlpoints.length) {
+					cpi--;
+					buffer[i] = 0;
+
+					escape = true;
+					break;
+				}
+
+				cp1 = cp2;
+				cp2 = this.controlpoints[cpi];
+
 			}
 
-			cp1 = cp2;
-			cp2 = this.controlpoints[cpi];
+			if(escape) {
+				escape = false;
+				continue;
+			}
+
+	 		
+	 		// If this point is before all control points.
+			if(time < cp1.x) {
+				buffer[i] = 0;
+				continue;
+			}
+
+
+			var slope = (cp2.y - cp1.y) / (cp2.x - cp1.x);
+			
+			buffer[i] = cp1.y + (time - cp1.x) * slope;
 
 		}
-
-		if(escape) {
-			escape = false;
-			continue;
-		}
-
- 		
- 		// If this point is before all control points.
-		if(time < cp1.x) {
-			buffer[i] = 0;
-			continue;
-		}
-
-
-		var slope = (cp2.y - cp1.y) / (cp2.x - cp1.x);
-		
-		buffer[i] = cp1.y + (time - cp1.x) * slope;
 
 	}
 
-};
+}
 
 
 module.exports = LineEditor;
 
-},{"./controlpoint.js":6,"./line.js":10}],12:[function(require,module,exports){
+},{"./pointeditor.js":16,"./pointline.js":17}],13:[function(require,module,exports){
 var Axis = require('./axis.js');
 
 
@@ -1520,7 +1662,7 @@ class LogAxis extends Axis {
 
 
 module.exports = LogAxis;
-},{"./axis.js":5}],13:[function(require,module,exports){
+},{"./axis.js":5}],14:[function(require,module,exports){
 
 
 var IRGraph = require("./irgraph.js");
@@ -1602,7 +1744,7 @@ window.onresize();
 var audio = new Audio();
 attachAudioDOM(audio);
 
-},{"./audio.js":3,"./audioDOM.js":4,"./frequencygraph.js":7,"./irgraph.js":9}],14:[function(require,module,exports){
+},{"./audio.js":3,"./audioDOM.js":4,"./frequencygraph.js":8,"./irgraph.js":11}],15:[function(require,module,exports){
 
 function debounce(f, delay) {
   var timer = null;
@@ -1786,7 +1928,91 @@ MouseControl.prototype.onscroll = function(e) {
 
 
 module.exports = MouseControl; // Singleton
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
+var ControlPoint = require('./controlpoint.js');
+
+
+class PointEditor {
+
+	constructor(graph) {
+
+		this.controlpoints = [];
+
+		this.graph = graph;
+
+	}
+
+
+	draw(context, toX, toY) {
+
+		for(var i = 0; i < this.controlpoints.length; i++) {
+			this.controlpoints[i].draw(context, toX, toY);
+		}
+
+	}
+
+
+	addControlPoint(x, y) {
+
+		var cp = new ControlPoint(x, y, this, this.graph);
+
+		this.controlpoints.push(cp);
+		this.graph.mousecontrol.addObject(cp);
+
+
+	}
+
+
+	removeControlPoint(o) {
+
+		this.graph.mousecontrol.removeObject(o);
+
+		var i = this.controlpoints.indexOf(o);
+
+		if(i > -1) {
+			this.controlpoints.splice(i, 1);
+		}
+
+	}
+
+
+	onPointMove() {
+
+		
+		
+	}
+
+}
+
+
+module.exports = PointEditor;
+},{"./controlpoint.js":7}],17:[function(require,module,exports){
+function PointLine() {
+
+	this.points = [];
+	this.color = '#FF0000';
+
+}
+
+PointLine.prototype.draw = function(context, toX, toY) {
+
+	context.strokeStyle = this.color;
+
+	context.beginPath();
+
+	context.moveTo(toX(this.points[0].x), toY(this.points[0].y));
+	
+	for(var i = 1; i < this.points.length; i++) {
+		context.lineTo(toX(this.points[i].x), toY(this.points[i].y));
+	}
+
+	context.stroke();
+
+};
+
+
+module.exports = PointLine;
+},{}],18:[function(require,module,exports){
 // Throughout this class, p refers to "principal" and s refers to
 // "secondary", as a generic version of x/y or y/x, depending on the orientation.
 
@@ -2286,7 +2512,7 @@ RangeSlider.prototype._updateCornerColors = function() {
 
 module.exports = RangeSlider;
 
-},{}],16:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 var ReferenceLinesAxis = require('./referencelinesaxis.js');
 
 
@@ -2387,7 +2613,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
 module.exports = ReferenceLines;
-},{"./referencelinesaxis.js":17}],17:[function(require,module,exports){
+},{"./referencelinesaxis.js":20}],20:[function(require,module,exports){
 
 
 function ReferenceLinesAxis(principal_axis, secondary_axis) {
@@ -2599,4 +2825,4 @@ ReferenceLinesAxis.prototype.drawLabels = function(context, toX, toY) {
 
 
 module.exports = ReferenceLinesAxis;
-},{}]},{},[13]);
+},{}]},{},[14]);

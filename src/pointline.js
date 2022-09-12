@@ -1,9 +1,11 @@
-function Line() {
+function PointLine() {
+
 	this.points = [];
 	this.color = '#FF0000';
+
 }
 
-Line.prototype.draw = function(context, toX, toY) {
+PointLine.prototype.draw = function(context, toX, toY) {
 
 	context.strokeStyle = this.color;
 
@@ -19,4 +21,5 @@ Line.prototype.draw = function(context, toX, toY) {
 
 };
 
-module.exports = Line;
+
+module.exports = PointLine;

@@ -3,6 +3,7 @@ To do:
 
 
 -> Begin on Laplace editor. (WebGL implementation)
+-> Perhaps some decorator system for drawing styles?
 
 -> IRGraph draw vizIR
 
