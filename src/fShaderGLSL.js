@@ -1,5 +1,6 @@
 module.exports = `
 
+precision highp float;
 
 #define buffer_length 1000
 #define samplerate 96000.0
@@ -29,7 +30,7 @@ lowp float computeLaplace(vec2 graphPosition) {
 
 	for(int i = 0; i < buffer_length; i++) {
 
-		t = float(i) / samplerate;	
+		t = float(i) / samplerate;
 
 		re_sum += exp(graphPosition.y * t) * cos(graphPosition.x * t * 2.0 * pi) * uIR[i];
 		im_sum += exp(graphPosition.y * t) * sin(graphPosition.x * t * 2.0 * pi) * uIR[i];
@@ -55,13 +56,13 @@ lowp vec3 color_interp(lowp float x) {
 
 		x = -x;
 
-	} 
+	}
 
 
 	x = log(x);
 
 
-	
+
 
 	lowp float minX = -3.0;
 	lowp float maxX = 8.0;
@@ -69,7 +70,7 @@ lowp vec3 color_interp(lowp float x) {
 
 	if(x <= minX) {
 		return vec3(1.0, 0.0, 1.0);
-	
+
 	}
 
 	if(x >= maxX) {
