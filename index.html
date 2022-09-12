@@ -31,7 +31,12 @@
 		</audio>
 
 		<canvas id="ir_graph"></canvas>
-		<canvas id="hz_graph"></canvas>
+
+		<div style="position: relative;">
+			<canvas id="hz_graph2d" style="position: absolute; left:0; top:0; z-index:1;"></canvas>
+			<canvas id="hz_graph3d" style="position: absolute; left:0; top:0; z-index:0;"></canvas>
+		</div>
+		<div id="hz_div"></div>
 
 		<form>
 			<label for="convolution_enabled">Enable Impulse Response Convolution</label>
