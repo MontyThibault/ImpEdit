@@ -1,9 +1,13 @@
 module.exports = function(audio) {
 
-	var convolution_enabled = document.getElementById('convolution_enabled');
-	var fft_enabled = document.getElementById('fft_enabled');
-	var range_label = document.getElementById('range_label');
-	var range_slider = document.getElementById('range_slider');
+	var convolution_enabled = document.getElementById('convolution_enabled'),
+		fft_enabled = document.getElementById('fft_enabled'),
+		range_label = document.getElementById('range_label'),
+		range_slider = document.getElementById('range_slider'),
+		normalization_enabled = document.getElementById('normalization_enabled'),
+		gain_label = document.getElementById('gain_label'),
+		gain_slider = document.getElementById('gain_slider');
+
 
 	var audio_file = document.getElementById('audio_file');
 
@@ -20,9 +24,13 @@ module.exports = function(audio) {
 	convolution_enabled.onclick = function(e) {
 
 		if(convolution_enabled.checked) {
-			audio.convolve_enable();
+
+			audio.convolveEnable();
+		
 		} else {
-			audio.convolve_disable();
+
+			audio.convolveDisable();
+
 		}
 
 	};
@@ -31,9 +39,36 @@ module.exports = function(audio) {
 	fft_enabled.onclick = function(e) {
 
 		if(fft_enabled.checked) {
-			audio.fft_enable();
+
+			audio.fftEnable();
+			range_label.style.visibility = "visible";
+			range_slider.style.visibility = "visible";
+		
 		} else {
-			audio.fft_disable();
+
+			audio.fftDisable();
+			range_label.style.visibility = "hidden";
+			range_slider.style.visibility = "hidden";
+
+		}
+
+	};
+
+
+	normalization_enabled.onclick = function(e) {
+
+		if(normalization_enabled.checked) {
+
+			audio.normalizationEnable();
+			gain_label.style.visibility = "hidden";
+			gain_slider.style.visibility = "hidden";
+
+		} else {
+
+			audio.normalizationDisable();
+			gain_label.style.visibility = "visible";
+			gain_slider.style.visibility = "visible";
+
 		}
 
 	};
@@ -62,6 +97,15 @@ module.exports = function(audio) {
 
 
 
+	gain_slider.oninput = function() {
+
+		audio.gainNode.gain = this.value;
+
+		gain_label.innerHTML = 'Gain: ' + this.value;
+
+	};
+
+
 	// http://jsfiddle.net/adamazad/0oy5moph/
 	audio_file.onchange = function(e) {
 
@@ -72,5 +116,22 @@ module.exports = function(audio) {
 		myAudio.src = fileURL;
 
 	};
+
+
+
+
+
+
+	// Defaults
+
+	normalization_enabled.checked = true;
+	normalization_enabled.onclick();
+
+	convolution_enabled.checked = false;
+	convolution_enabled.onclick();
+
+	fft_enabled.checked = false;
+	fft_enabled.onclick();
+
 
 };

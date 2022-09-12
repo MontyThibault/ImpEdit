@@ -17,6 +17,24 @@
 			input[type="range"] {
 				width: 500px;
 			}
+
+			.halfgraph {
+				float: left;
+
+			}
+
+
+			form > * {
+				float: left;
+			}
+
+			form > label {
+				margin-left: 15px;
+			}
+
+			form > label:first-child {
+				margin-left: 0px;
+			}
 		</style>
 	</head>
 	<body>
@@ -30,31 +48,45 @@
 			<source src='audio.mp3' type='audio/mpeg'></audio>
 		</audio>
 
-		<canvas id="ir_graph"></canvas>
-
-		<div style="position: relative;">
-			<canvas id="fg_graph2d" style="position: absolute; left:0; top:0; z-index:1;"></canvas>
-			<canvas id="fg_graph3d" style="position: absolute; left:0; top:0; z-index:0;"></canvas>
-		</div>
-		<div id="fg_div"></div>
-
-		<canvas id="og_graph"></canvas>
-
 		<form>
+
+			<label for='normalization_enabled'>Enable Normalization</label>
+			<input type='checkbox' id='normalization_enabled' />
+
+			<label for='gain_slider' id='gain_label'>Gain: 1.0</label>
+			<input id='gain_slider' type='range' min='0' max='1' step='0.01'/>
+
+
 			<label for="convolution_enabled">Enable Impulse Response Convolution</label>
 			<input type="checkbox" id="convolution_enabled" />
 
-			<br/>
-
+	
 			<label for="fft_enabled">Enable FFT Low-Pass</label>
 			<input type="checkbox" id="fft_enabled" />
 
-			<br/>
 
-			<span id="range_label">100 Hz</span>
-			<br/>
+			<label for="range_slider" id='range_label'>100 Hz</label>
+			
 			<input id="range_slider" type="range" step="0.01" />
 		</form>
+
+		
+		<canvas id="ir_graph"></canvas>
+		
+
+
+		<div class='halfgraph'>
+			<div style="position: relative;">
+				<canvas id="fg_graph2d" style="position: absolute; left:0; top:0; z-index:1;"></canvas>
+				<canvas id="fg_graph3d" style="position: absolute; left:0; top:0; z-index:0;"></canvas>
+			</div>
+			<div id="fg_div"></div>
+		</div>
+
+		<div class='halfgraph'>
+			<canvas id="og_graph"></canvas>
+		</div>
+
 
 		<script src='jquery-3.2.1.js'></script>
 		<script src='build/bundle.js'></script>

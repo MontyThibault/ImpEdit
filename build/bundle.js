@@ -339,151 +339,207 @@ function set_context(that, f) {
 }
 
 
-function Audio() {
-
-	this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-	var myAudio = document.querySelector('audio');
-	this.source = this.audioContext.createMediaElementSource(myAudio);	
-
-	this.block_size = 16384;
-	this.lowpass_cutoff = 500; // Hz
+class Audio {
 
 
-	var z_array = new jsfft.ComplexArray(this.block_size, Float32Array);
+	constructor() {
+
+		this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+		var myAudio = document.querySelector('audio');
+		this.source = this.audioContext.createMediaElementSource(myAudio);	
+
+		this.block_size = 16384;
+		this.lowpass_cutoff = 500; // Hz
+
+
+		var z_array = new jsfft.ComplexArray(this.block_size, Float32Array);
 
 
 
-	var lowpass_map = set_context(this, function(freq, i, n) {
+		var lowpass_map = set_context(this, function(freq, i, n) {
 
-		var hz = (this.audioContext.sampleRate / this.block_size)  * (i + 1); 
+			var hz = (this.audioContext.sampleRate / this.block_size)  * (i + 1); 
 
-		if(hz > this.lowpass_cutoff) {
-			freq.real = 0;
-			freq.imag = 0;
+			if(hz > this.lowpass_cutoff) {
+				freq.real = 0;
+				freq.imag = 0;
+			}
+
+		});
+
+		this.fft_processor = this.audioContext.createScriptProcessor(this.block_size, 2, 2);
+		this.fft_processor.onaudioprocess = 
+				set_context(this, function(audioProcessingEvent) {
+
+
+			var inputBuffer = audioProcessingEvent.inputBuffer;
+			var outputBuffer = audioProcessingEvent.outputBuffer;
+
+			for (var channel = 0; channel < outputBuffer.numberOfChannels; channel++) {
+
+				z_array.real = inputBuffer.getChannelData(channel);
+				z_array.imag.fill(0);
+
+
+				z_array.frequencyMap(lowpass_map);
+
+
+			    outputBuffer.copyToChannel(z_array.real, channel, 0);
+		    }
+
+		});
+
+
+
+		this.convolver = this.audioContext.createConvolver();
+		this.convolver.buffer = this.audioContext.createBuffer(1, 96000, this.audioContext.sampleRate);
+
+		this.convolver.loop = false;
+		this.convolver.normalize = false;
+
+
+
+		this.gainNode = this.audioContext.createGain();
+
+
+
+		this.convolve = false;
+		this.fft = false;
+
+		this.reconnect();
+
+	}
+
+
+	updateConvolver(buffer) {
+
+		// Simply this.convolver.buffer.copyToChannel(this.convolutionBufferArray, 0, 0);
+		// does not work for some reason. But enter as a local variable
+
+		var convlutionBuffer = this.convolver.buffer;
+
+		convlutionBuffer.copyToChannel(buffer, 0, 0);
+
+		this.convolver.buffer = convlutionBuffer;
+
+	}
+
+
+	refreshConvolver() {
+
+		var cb = this.convolver.buffer;
+		this.convolver.buffer = cb;
+
+	}
+
+
+
+	convolveEnable() {
+
+		this.convolve = true;
+		this.reconnect();
+
+	}
+
+
+	convolveDisable() {
+
+		this.convolve = false;
+		this.reconnect();
+
+	}
+
+
+	fftEnable() {
+
+		this.fft = true;
+		this.reconnect();
+
+	}
+
+
+	fftDisable() {
+
+		this.fft = false;
+		this.reconnect();
+
+	}
+
+
+	normalizationEnable() {
+
+		this.convolver.normalize = true;
+
+		this.refreshConvolver();
+
+		this.reconnect();
+
+	}
+
+
+	normalizationDisable() {
+
+		this.convolver.normalize = false;
+
+		this.refreshConvolver();
+
+		this.reconnect();
+
+	}
+
+
+	reconnect() {
+
+		this.source.disconnect();
+		this.fft_processor.disconnect();
+		this.convolver.disconnect();
+
+
+		var last = this.source;
+
+		if(this.fft) {
+
+			last.connect(this.fft_processor);
+			last = this.fft_processor;
+
 		}
 
-	});
 
-	this.fft_processor = this.audioContext.createScriptProcessor(this.block_size, 2, 2);
-	this.fft_processor.onaudioprocess = 
-			set_context(this, function(audioProcessingEvent) {
+		if(!this.convolver.normalize) {
 
+			last.connect(this.gainNode);
+			last = this.gainNode;
 
-		var inputBuffer = audioProcessingEvent.inputBuffer;
-		var outputBuffer = audioProcessingEvent.outputBuffer;
-
-		for (var channel = 0; channel < outputBuffer.numberOfChannels; channel++) {
-
-			z_array.real = inputBuffer.getChannelData(channel);
-			z_array.imag.fill(0);
+		}
 
 
-			z_array.frequencyMap(lowpass_map);
+		if(this.convolve) {
 
+			last.connect(this.convolver);
+			last = this.convolver;
 
-		    outputBuffer.copyToChannel(z_array.real, channel, 0);
-	    }
+		}
 
-	});
+		last.connect(this.audioContext.destination);
 
-
-
-	this.convolver = this.audioContext.createConvolver();
-	this.convolver.buffer = this.audioContext.createBuffer(1, 96000, this.audioContext.sampleRate);
-
-
-	this.convolver.loop = false;
-	this.convolver.normalize = true;
-
-
-
-	this.convolve = false;
-	this.fft = false;
-
-	this.reconnect();
+	}
 
 }
-
-
-Audio.prototype.update_convolver = function(buffer) {
-
-	// Simply this.convolver.buffer.copyToChannel(this.convolutionBufferArray, 0, 0);
-	// does not work for some reason. 
-
-	var convlutionBuffer = this.convolver.buffer;
-
-	convlutionBuffer.copyToChannel(buffer, 0, 0);
-
-	this.convolver.buffer = convlutionBuffer;
-
-};
-
-
-Audio.prototype.convolve_enable = function() {
-
-	this.convolve = true;
-	this.reconnect();
-
-};
-
-
-Audio.prototype.convolve_disable = function() {
-
-	this.convolve = false;
-	this.reconnect();
-
-};
-
-
-Audio.prototype.fft_enable = function() {
-
-	this.fft = true;
-	this.reconnect();
-
-};
-
-
-Audio.prototype.fft_disable = function() {
-
-	this.fft = false;
-	this.reconnect();
-
-};
-
-
-Audio.prototype.reconnect = function() {
-
-	this.source.disconnect();
-	this.fft_processor.disconnect();
-	this.convolver.disconnect();
-
-
-	var last = this.source;
-
-	if(this.fft) {
-		last.connect(this.fft_processor);
-		last = this.fft_processor;
-	}
-
-	if(this.convolve) {
-		last.connect(this.convolver);
-		last = this.convolver;
-	}
-
-	last.connect(this.audioContext.destination);
-
-};
 
 
 module.exports = Audio;
 },{"jsfft":2}],4:[function(require,module,exports){
 module.exports = function(audio) {
 
-	var convolution_enabled = document.getElementById('convolution_enabled');
-	var fft_enabled = document.getElementById('fft_enabled');
-	var range_label = document.getElementById('range_label');
-	var range_slider = document.getElementById('range_slider');
+	var convolution_enabled = document.getElementById('convolution_enabled'),
+		fft_enabled = document.getElementById('fft_enabled'),
+		range_label = document.getElementById('range_label'),
+		range_slider = document.getElementById('range_slider'),
+		normalization_enabled = document.getElementById('normalization_enabled'),
+		gain_label = document.getElementById('gain_label'),
+		gain_slider = document.getElementById('gain_slider');
+
 
 	var audio_file = document.getElementById('audio_file');
 
@@ -500,9 +556,13 @@ module.exports = function(audio) {
 	convolution_enabled.onclick = function(e) {
 
 		if(convolution_enabled.checked) {
-			audio.convolve_enable();
+
+			audio.convolveEnable();
+		
 		} else {
-			audio.convolve_disable();
+
+			audio.convolveDisable();
+
 		}
 
 	};
@@ -511,9 +571,36 @@ module.exports = function(audio) {
 	fft_enabled.onclick = function(e) {
 
 		if(fft_enabled.checked) {
-			audio.fft_enable();
+
+			audio.fftEnable();
+			range_label.style.visibility = "visible";
+			range_slider.style.visibility = "visible";
+		
 		} else {
-			audio.fft_disable();
+
+			audio.fftDisable();
+			range_label.style.visibility = "hidden";
+			range_slider.style.visibility = "hidden";
+
+		}
+
+	};
+
+
+	normalization_enabled.onclick = function(e) {
+
+		if(normalization_enabled.checked) {
+
+			audio.normalizationEnable();
+			gain_label.style.visibility = "hidden";
+			gain_slider.style.visibility = "hidden";
+
+		} else {
+
+			audio.normalizationDisable();
+			gain_label.style.visibility = "visible";
+			gain_slider.style.visibility = "visible";
+
 		}
 
 	};
@@ -542,6 +629,15 @@ module.exports = function(audio) {
 
 
 
+	gain_slider.oninput = function() {
+
+		audio.gainNode.gain = this.value;
+
+		gain_label.innerHTML = 'Gain: ' + this.value;
+
+	};
+
+
 	// http://jsfiddle.net/adamazad/0oy5moph/
 	audio_file.onchange = function(e) {
 
@@ -552,6 +648,23 @@ module.exports = function(audio) {
 		myAudio.src = fileURL;
 
 	};
+
+
+
+
+
+
+	// Defaults
+
+	normalization_enabled.checked = true;
+	normalization_enabled.onclick();
+
+	convolution_enabled.checked = false;
+	convolution_enabled.onclick();
+
+	fft_enabled.checked = false;
+	fft_enabled.onclick();
+
 
 };
 },{}],5:[function(require,module,exports){
@@ -949,72 +1062,76 @@ class BufferSum extends Observable {
 
 module.exports = BufferSum;
 },{"./observable.js":18}],8:[function(require,module,exports){
-function ControlPoint(x, y, editor, graph) {
+class ControlPoint {
 
-	this.x = x;
-	this.y = y;
+	constructor(x, y, editor, graph) {
 
-	this.editor = editor;
-	this.graph = graph;
+		this.x = x;
+		this.y = y;
 
-	this.strokeColor;
-	this.onactiveend();
+		this.editor = editor;
+		this.graph = graph;
+
+		this.strokeColor;
+		this.onactiveend();
+		
+	}
+
+
+	draw(context, toX, toY) {
 	
+		// Draw circle
+		context.strokeStyle = this.strokeColor;
+
+		context.beginPath();
+		context.arc(toX(this.x), toY(this.y), 10, 0, 2 * Math.PI);
+		context.stroke();
+
+	}
+
+
+	distanceTo(x, y) {
+
+		var x_canvas = this.graph.xAxis.graphToCanvas(this.x),
+			y_canvas = this.graph.yAxis.graphToCanvas(this.y);
+
+		return Math.sqrt((x_canvas - x) * (x_canvas - x) + 
+			(y_canvas - y) * (y_canvas - y));
+
+	}
+
+
+	ondrag(x, y) {
+
+		this.x = this.graph.xAxis.canvasToGraph(x);
+		this.y = this.graph.yAxis.canvasToGraph(y);
+
+		this.editor.onPointMove();
+
+	}
+
+
+	onactivestart() {
+
+		this.strokeColor = '#FF0000';
+
+	}
+
+
+	onactiveend() {
+
+		this.strokeColor = '#000000';
+
+	}
+
+
+	ondblclick() {
+
+		this.editor.removeControlPoint(this);
+
+	}
+
 }
-
-
-ControlPoint.prototype.draw = function(context, toX, toY) {
-	
-	// Draw circle
-	context.strokeStyle = this.strokeColor;
-
-	context.beginPath();
-	context.arc(toX(this.x), toY(this.y), 10, 0, 2 * Math.PI);
-	context.stroke();
-
-};
-
-
-ControlPoint.prototype.distanceTo = function(x, y) {
-
-	var x_canvas = this.graph.xAxis.graphToCanvas(this.x),
-		y_canvas = this.graph.yAxis.graphToCanvas(this.y);
-
-	return Math.sqrt((x_canvas - x) * (x_canvas - x) + 
-		(y_canvas - y) * (y_canvas - y));
-
-};
-
-
-ControlPoint.prototype.ondrag = function(x, y) {
-
-	this.x = this.graph.xAxis.canvasToGraph(x);
-	this.y = this.graph.yAxis.canvasToGraph(y);
-
-	this.editor.onPointMove();
-
-};
-
-
-ControlPoint.prototype.onactivestart = function() {
-
-	this.strokeColor = '#FF0000';
-
-};
-
-
-ControlPoint.prototype.onactiveend = function() {
-
-	this.strokeColor = '#000000';
-
-};
-
-
-ControlPoint.prototype.ondblclick = function() {
-
-	this.editor.removeControlPoint(this);
-
-};
 
 
 module.exports = ControlPoint;
@@ -2246,28 +2363,32 @@ og.editor = hz_editor.subEditor0;
 
 window.onresize = function() {
 
-	ir_canvas.width = window.innerWidth - 20;
-	ir_canvas.height = 500;
+
+	var height = 410;
+
+
+	ir_canvas.width = window.innerWidth;
+	ir_canvas.height = 410;
 
 
 	ir.needsUpdate = true;
 
 
-	fg_canvas2d.width = window.innerWidth - 20;
-	fg_canvas2d.height = 500;
+	fg_canvas2d.width = window.innerWidth / 2;
+	fg_canvas2d.height = 410;
 
-	fg_canvas3d.width = window.innerWidth - 20;
-	fg_canvas3d.height = 500;
+	fg_canvas3d.width = window.innerWidth / 2 - 20;
+	fg_canvas3d.height = 410;
 
-	fg_div.style = 'height: 500px';
+	fg_div.style = 'height: 410px; width: ' + fg_canvas2d.width + 'px;';
 
 	fg.needsUpdate = true;
 
 	fg.gl.viewport(0, 0, fg_canvas3d.width, fg_canvas3d.height);
 
 
-	og_canvas.width = window.innerWidth - 20;
-	og_canvas.height = 500;
+	og_canvas.width = window.innerWidth / 2 - 20;
+	og_canvas.height = 410;
 
 	og.needsUpdate = true;
 
@@ -2316,7 +2437,7 @@ function debounce(f, delay) {
 
 totalBuffer.addObserver(debounce(function() {
 
-	audio.update_convolver(this.buffer);
+	audio.updateConvolver(this.buffer);
 
 }, 1000));
 
@@ -2365,175 +2486,179 @@ function debounce(f, delay) {
 
 
 
-function MouseControl(graph) {
+class MouseControl {
 
-	this.active = false;
-	this.mousedown = false;
+	constructor(graph) {
 
-	this.objects = [];
-	this.graph = graph;
+		this.active = false;
+		this.mousedown = false;
 
-	// Pixels from nearest object before it's not active.
-	this.threshold = 15;
+		this.objects = [];
+		this.graph = graph;
 
-	this.oldClientX = 0;
-	this.oldClientY = 0;
+		// Pixels from nearest object before it's not active.
+		this.threshold = 15;
+
+		this.oldClientX = 0;
+		this.oldClientY = 0;
+
+	}
+
+
+	_getX(e) {
+
+		return e.clientX - this.graph.canvas.getBoundingClientRect().left;
+
+	}
+
+	_getY(e) {
+
+		return e.clientY - this.graph.canvas.getBoundingClientRect().top;
+		
+	}
+
+
+	_updateActive(e) {
+
+		var closest = undefined,
+			distance = 999;
+
+		var x = this._getX(e);
+		var y = this._getY(e);
+
+		for(var i = 0; i < this.objects.length; i++) {
+
+			var distToObj = this.objects[i].distanceTo(x, y);
+
+			if(distToObj < distance) {
+				distance = distToObj;
+				closest = this.objects[i];
+			}
+		}
+
+		if(distance <= this.threshold) {
+			this._setActive(closest);
+		} else {
+			this._setActive(false);
+		}
+
+	}
+
+
+	_setActive(o) {
+
+		if(this.active !== o) {
+			if(this.active !== false) {
+				this.active.onactiveend();
+			}
+
+			if(o !== false) {
+				o.onactivestart();
+			}
+
+
+			this.graph.needsUpdate = true;
+		}
+
+		this.active = o;
+
+	}
+
+
+	addObject(o) {
+
+		this.objects.push(o);
+
+	}
+
+
+	removeObject(o) {
+
+		var i = this.objects.indexOf(o);
+
+		if(i > -1) {
+			this.objects.splice(i, 1);
+		}
+		
+	}
+
+
+	onmousemove(e) {
+
+		if(this.active && this.mousedown) {
+
+			var x = this._getX(e);
+			var y = this._getY(e);
+
+			this.active.ondrag(x, y);
+
+			this.graph.needsUpdate = true;
+
+		
+		} else if(this.mousedown) {
+
+			var x = this._getX(e);
+			var y = this._getY(e);
+
+			this.graph.pan(x - this.oldClientX, y - this.oldClientY, x, y);
+
+			this.oldClientX = x;
+			this.oldClientY = y;
+
+		} else {
+			this._updateActive(e);
+		}
+
+	}
+
+
+	onmousedown(e) {
+
+		this.mousedown = true;
+
+		this.oldClientX = this._getX(e);
+		this.oldClientY = this._getY(e);
+
+	}
+
+
+	onmouseup(e) {
+
+		this.mousedown = false;
+
+		if(this.active && this.active.onmouseup) {
+			this.active.onmouseup();
+		}
+
+	}
+
+
+	ondblclick(e) {
+
+		if(this.active) {
+			this.active.ondblclick(e);
+		} else {
+			this.graph.addControlPoint(this._getX(e), this._getY(e));
+		}
+
+		this.graph.needsUpdate = true;
+
+	}
+
+
+	onscroll(e) {
+
+		if(e.wheelDelta > 0) {
+			this.graph.zoomIn();
+		} else if(e.wheelDelta < 0) {
+			this.graph.zoomOut();
+		}
+
+		this.onmousemove(e);
+
+	}
 
 }
-
-
-MouseControl.prototype._getX = function(e) {
-
-	return e.clientX - this.graph.canvas.getBoundingClientRect().left;
-
-};
-
-MouseControl.prototype._getY = function(e) {
-
-	return e.clientY - this.graph.canvas.getBoundingClientRect().top;
-	
-};
-
-
-MouseControl.prototype._updateActive = function(e) {
-
-	var closest = undefined,
-		distance = 999;
-
-	var x = this._getX(e);
-	var y = this._getY(e);
-
-	for(var i = 0; i < this.objects.length; i++) {
-
-		var distToObj = this.objects[i].distanceTo(x, y);
-
-		if(distToObj < distance) {
-			distance = distToObj;
-			closest = this.objects[i];
-		}
-	}
-
-	if(distance <= this.threshold) {
-		this._setActive(closest);
-	} else {
-		this._setActive(false);
-	}
-
-};
-
-
-MouseControl.prototype._setActive = function(o) {
-
-	if(this.active !== o) {
-		if(this.active !== false) {
-			this.active.onactiveend();
-		}
-
-		if(o !== false) {
-			o.onactivestart();
-		}
-
-
-		this.graph.needsUpdate = true;
-	}
-
-	this.active = o;
-
-};
-
-
-MouseControl.prototype.addObject = function(o) {
-
-	this.objects.push(o);
-
-};
-
-
-MouseControl.prototype.removeObject = function(o) {
-
-	var i = this.objects.indexOf(o);
-
-	if(i > -1) {
-		this.objects.splice(i, 1);
-	}
-	
-};
-
-
-MouseControl.prototype.onmousemove = function(e) {
-
-	if(this.active && this.mousedown) {
-
-		var x = this._getX(e);
-		var y = this._getY(e);
-
-		this.active.ondrag(x, y);
-
-		this.graph.needsUpdate = true;
-
-	
-	} else if(this.mousedown) {
-
-		var x = this._getX(e);
-		var y = this._getY(e);
-
-		this.graph.pan(x - this.oldClientX, y - this.oldClientY, x, y);
-
-		this.oldClientX = x;
-		this.oldClientY = y;
-
-	} else {
-		this._updateActive(e);
-	}
-
-};
-
-
-MouseControl.prototype.onmousedown = function(e) {
-
-	this.mousedown = true;
-
-	this.oldClientX = this._getX(e);
-	this.oldClientY = this._getY(e);
-
-};
-
-
-MouseControl.prototype.onmouseup = function(e) {
-
-	this.mousedown = false;
-
-	if(this.active && this.active.onmouseup) {
-		this.active.onmouseup();
-	}
-
-};
-
-
-MouseControl.prototype.ondblclick = function(e) {
-
-	if(this.active) {
-		this.active.ondblclick(e);
-	} else {
-		this.graph.addControlPoint(this._getX(e), this._getY(e));
-	}
-
-	this.graph.needsUpdate = true;
-
-};
-
-
-MouseControl.prototype.onscroll = function(e) {
-
-	if(e.wheelDelta > 0) {
-		this.graph.zoomIn();
-	} else if(e.wheelDelta < 0) {
-		this.graph.zoomOut();
-	}
-
-	this.onmousemove(e);
-
-};
 
 
 module.exports = MouseControl; // Singleton
@@ -2763,28 +2888,33 @@ class PointEditor extends Observable {
 
 module.exports = PointEditor;
 },{"./controlpoint.js":8,"./observable.js":18}],22:[function(require,module,exports){
-function PointLine() {
+class PointLine {
 
-	this.points = [];
-	this.color = '#FF0000';
+	constructor() {
 
-}
+		this.points = [];
+		this.color = '#FF0000';
 
-PointLine.prototype.draw = function(context, toX, toY) {
-
-	context.strokeStyle = this.color;
-
-	context.beginPath();
-
-	context.moveTo(toX(this.points[0].x), toY(this.points[0].y));
-	
-	for(var i = 1; i < this.points.length; i++) {
-		context.lineTo(toX(this.points[i].x), toY(this.points[i].y));
 	}
 
-	context.stroke();
 
-};
+	draw(context, toX, toY) {
+
+		context.strokeStyle = this.color;
+
+		context.beginPath();
+
+		context.moveTo(toX(this.points[0].x), toY(this.points[0].y));
+		
+		for(var i = 1; i < this.points.length; i++) {
+			context.lineTo(toX(this.points[i].x), toY(this.points[i].y));
+		}
+
+		context.stroke();
+
+	}
+
+}
 
 
 module.exports = PointLine;
@@ -3360,158 +3490,184 @@ module.exports = RangeSlider;
 var ReferenceLinesAxis = require('./referencelinesaxis.js');
 
 
-function ReferenceLines(principal_axis, secondary_axis) {
+class ReferenceLines {
 
-	this.xRef = new ReferenceLinesAxis(principal_axis, secondary_axis);
-	this.yRef = new ReferenceLinesAxis(secondary_axis, principal_axis);
+	constructor(principal_axis, secondary_axis) {
 
-	this.xRef.minimum_label_distance = 60;
-	this.yRef.minimum_label_distance = 25;
-}
+		this.xRef = new ReferenceLinesAxis(principal_axis, secondary_axis);
+		this.yRef = new ReferenceLinesAxis(secondary_axis, principal_axis);
 
-
-
-
-// Take rate of change at point (in canvas-space), expanded to encompass the whole canvas,
-// and return log in base of line_multiples.
-
-// ex. If non-linear scale has rate of change 10 at point P, and canvas is 100 pixels,
-// then this returns log_{line_multiples} 1000.
-
-// Point argument is irrelevant for linear scaling.
-
-ReferenceLines.prototype._getScaleFactor = function(point, ref) {
-
-	var span = ref.axis.canvasToGraphInterval(point, ref.axis.get_full_extent());
-
-	return Math.log(Math.abs(span)) / Math.log(ref.line_multiples);
-
-}
-
-
-
-// Generate array of shades and drawing callables
-ReferenceLines.prototype._getDrawingArray = function(ref) {
-
-
-	// scale- before variables refers to logarithmic values
-
-	// Screen span
-
-	var scalefactorTop = this._getScaleFactor(0, ref),
-		scalefactorBottom = this._getScaleFactor(ref.axis.get_full_extent(), ref);
-
-
-	// Draw this many scale levels below min 
-
-	var scalefactorCutoff = 1.5;
-
-
-	var scalefactorMin = Math.min(scalefactorTop, scalefactorBottom) - scalefactorCutoff,
-		scalefactorMax = Math.max(scalefactorTop, scalefactorBottom);
-
-
-	scalefactorMin = Math.floor(scalefactorMin);
-	scalefactorMax = Math.ceil(scalefactorMax);
-
-
-
-	var a = [];
-
-	for(var scale = scalefactorMin; scale < scalefactorMax; scale++) {
-
-
-		a.push([scale, function(scale, context, toX, toY) {
-			ref.drawLinesAtScale(context, toX, toY, scale);
-		}.bind(this, scale)]);
-
-
-		a.push([scale - 100, function(scale, context, toX, toY) {
-			ref.drawLabelsAtScale(context, toX, toY, scale);
-		}.bind(this, scale)]);
+		this.xRef.minimum_label_distance = 60;
+		this.yRef.minimum_label_distance = 25;
 
 	}
 
-	return a;
-
-};
-
-ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
-	var xArr = this._getDrawingArray(this.xRef),
-		yArr = this._getDrawingArray(this.yRef);
 
-	var a = xArr.concat(yArr);
+	// Take rate of change at point (in canvas-space), expanded to encompass the whole canvas,
+	// and return log in base of line_multiples.
+
+	// ex. If non-linear scale has rate of change 10 at point P, and canvas is 100 pixels,
+	// then this returns log_{line_multiples} 1000.
+
+	// Point argument is irrelevant for linear scaling.
+
+	_getScaleFactor(point, ref) {
+
+		var span = ref.axis.canvasToGraphInterval(point, ref.axis.get_full_extent());
+
+		return Math.log(Math.abs(span)) / Math.log(ref.line_multiples);
+
+	}
 
 
-	// Sort by /descending/ shade. i.e. darker groups of lines
-	// are drawn later
+
+	// Generate array of shades and drawing callables
+	_getDrawingArray(ref) {
+
+
+		// scale- before variables refers to logarithmic values
+
+		// Screen span
+
+		var scalefactorTop = this._getScaleFactor(0, ref),
+			scalefactorBottom = this._getScaleFactor(ref.axis.get_full_extent(), ref);
+
+
+		// Draw this many scale levels below min 
+
+		var scalefactorCutoff = 1.5;
+
+
+		var scalefactorMin = Math.min(scalefactorTop, scalefactorBottom) - scalefactorCutoff,
+			scalefactorMax = Math.max(scalefactorTop, scalefactorBottom);
+
+
+		scalefactorMin = Math.floor(scalefactorMin);
+		scalefactorMax = Math.ceil(scalefactorMax);
+
+
+
+		var a = [];
+
+		for(var scale = scalefactorMin; scale < scalefactorMax; scale++) {
+
+
+			a.push([scale, function(scale, context, toX, toY) {
+				ref.drawLinesAtScale(context, toX, toY, scale);
+			}.bind(this, scale)]);
+
+
+			a.push([scale - 100, function(scale, context, toX, toY) {
+				ref.drawLabelsAtScale(context, toX, toY, scale);
+			}.bind(this, scale)]);
+
+		}
+
+		return a;
+
+	}
 	
-	a.sort(function(a, b) {
-		return b[0] - a[0];
-	});
+
+	draw(context, toX, toY) {
 
 
-	for(var i = 0; i < a.length; i++) {
+		var xArr = this._getDrawingArray(this.xRef),
+			yArr = this._getDrawingArray(this.yRef);
 
-		// Draw
-		a[i][1](context, toX, toY);
+		var a = xArr.concat(yArr);
+
+
+		// Sort by /descending/ shade. i.e. darker groups of lines
+		// are drawn later
+		
+		a.sort(function(a, b) {
+			return b[0] - a[0];
+		});
+
+
+		for(var i = 0; i < a.length; i++) {
+
+			// Draw
+			a[i][1](context, toX, toY);
+		}
+
+
+
+		this.xRef.drawSpecialLines(context, toX, toY);
+		this.yRef.drawSpecialLines(context, toX, toY);
+
+		this.xRef.drawSpecialLabels(context, toX, toY);
+		this.yRef.drawSpecialLabels(context, toX, toY);
+
+
+
 	}
 
-
-
-	this.xRef.drawSpecialLines(context, toX, toY);
-	this.yRef.drawSpecialLines(context, toX, toY);
-
-	this.xRef.drawSpecialLabels(context, toX, toY);
-	this.yRef.drawSpecialLabels(context, toX, toY);
-
-
-
-};
+}
 
 
 module.exports = ReferenceLines;
 },{"./referencelinesaxis.js":25}],25:[function(require,module,exports){
 
 
-function ReferenceLinesAxis(principal_axis, secondary_axis) {
-
-	this.axis = principal_axis;
-
-	// Required only for drawing
-	this.saxis = secondary_axis;
-
-	// How many small lines between large lines (recursive)
-	this.line_multiples = 10;
-
-	// Increase this to see less frequent 
-	this.minimum_label_distance = 100; //px
+class ReferenceLinesAxis {
 
 
-	// [[labelCoord, text, strokeStyle, <dashing> (optional)], ...]
-	this.specialLabels = [];
-}
+	constructor(principal_axis, secondary_axis) {
+
+		this.axis = principal_axis;
+
+		// Required only for drawing
+		this.saxis = secondary_axis;
+
+		// How many small lines between large lines (recursive)
+		this.line_multiples = 10;
+
+		// Increase this to see less frequent 
+		this.minimum_label_distance = 100; //px
 
 
-ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
-
-	var min = Math.min(this.axis.min, this.axis.max),
-		max = Math.max(this.axis.min, this.axis.max);
-
+		// [[labelCoord, text, strokeStyle, <dashing> (optional)], ...]
+		this.specialLabels = [];
+	}
 
 
-	var begin = Math.round(min / interval) * interval,
-		end = Math.round(max / interval) * interval;
+	_iterateIntervalOverAxis(interval, f) {
+
+		var min = Math.min(this.axis.min, this.axis.max),
+			max = Math.max(this.axis.min, this.axis.max);
 
 
-	// In this case, we wish to begin from the top and iterate downwards
-	// as to not disrupt the order of the breaking functionality.
 
-	if(this.axis.type === this.axis.TYPE_LOG && this.axis.min < 0) {
+		var begin = Math.round(min / interval) * interval,
+			end = Math.round(max / interval) * interval;
 
-		for(var j = end; j >= begin; j -= interval) {
+
+		// In this case, we wish to begin from the top and iterate downwards
+		// as to not disrupt the order of the breaking functionality.
+
+		if(this.axis.type === this.axis.TYPE_LOG && this.axis.min < 0) {
+
+			for(var j = end; j >= begin; j -= interval) {
+
+				if(f.call(this, j)) {
+
+					break;
+
+				}
+
+			}
+
+			return;
+
+		}
+
+
+		// Regular iteration
+
+		for(var j = begin; j <= end; j += interval) {
 
 			if(f.call(this, j)) {
 
@@ -3521,149 +3677,66 @@ ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
 
 		}
 
-		return;
+	}
+
+
+	getShade(scale, refPoint) {
+
+		// Get canvas distance
+
+		var interval = Math.pow(this.line_multiples, scale);
+
+		var cd = this.axis.graphToCanvasInterval(refPoint, interval);
+
+
+		// At this distance, lines appear completely black.
+		// Linear interpolation from this to zero.
+
+		var black_width = 200;
+
+		return 1 - Math.max(0, Math.min(1, Math.abs(cd) / black_width));
 
 	}
 
 
-	// Regular iteration
+	drawLine(context, toX, toY, j) {
 
-	for(var j = begin; j <= end; j += interval) {
-
-		if(f.call(this, j)) {
-
-			break;
-
+		function moveTo(x, y) {
+			context.moveTo(toX(x), toY(y));
 		}
 
-	}
-
-};
-
-
-ReferenceLinesAxis.prototype.getShade = function(scale, refPoint) {
-
-	// Get canvas distance
-
-	var interval = Math.pow(this.line_multiples, scale);
-
-	var cd = this.axis.graphToCanvasInterval(refPoint, interval);
+		function lineTo(x, y) {
+			context.lineTo(toX(x), toY(y));
+		}
 
 
-	// At this distance, lines appear completely black.
-	// Linear interpolation from this to zero.
 
-	var black_width = 200;
+		var startP = j,
+			endP = j,
+			startS = this.saxis.min,
+			endS = this.saxis.max;
 
-	return 1 - Math.max(0, Math.min(1, Math.abs(cd) / black_width));
-
-};
-
-
-ReferenceLinesAxis.prototype.drawLine = function(context, toX, toY, j) {
-
-	function moveTo(x, y) {
-		context.moveTo(toX(x), toY(y));
-	}
-
-	function lineTo(x, y) {
-		context.lineTo(toX(x), toY(y));
-	}
-
-
-	if(this.axis.type === 1) {
-
-		abc=123;
+		
+		this.axis.orientationf(moveTo, startP, startS);
+		this.axis.orientationf(lineTo, endP, endS);
 
 	}
 
 
-	var startP = j,
-		endP = j,
-		startS = this.saxis.min,
-		endS = this.saxis.max;
+	// Eliminate duplication in this method
 
-	
-	this.axis.orientationf(moveTo, startP, startS);
-	this.axis.orientationf(lineTo, endP, endS);
-
-};
+	drawLinesAtScale(context, toX, toY, scale) {
+		
+		var interval = Math.pow(this.line_multiples, scale);
 
 
-// Eliminate duplication in this method
-
-ReferenceLinesAxis.prototype.drawLinesAtScale = function(context, toX, toY, scale) {
-	
-	var interval = Math.pow(this.line_multiples, scale);
-
-
-	if(this.axis.type === this.axis.TYPE_LINEAR) {
-
-
-		context.beginPath();
-
-
-		var shade = this.getShade(scale, 0);
-
-		var hex = Math.floor((1 - shade) * 255);
-
-		var color = 'rgba(0, 0, 0, ' + (1 - shade) + ')';
-		context.strokeStyle = color;
-
-
-		var that = this;
-		this._iterateIntervalOverAxis(interval, function(j) {
-
-			for(var i = 0; i < this.specialLabels.length; i++) {
-
-				if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
-
-					return false;
-
-				}
-
-			}
-
-
-			that.drawLine(context, toX, toY, j);
-
-		});
-
-		context.stroke();
-
-
-
-	} else if(this.axis.type === this.axis.TYPE_LOG) {
-
-
-		var pixelThresh = 3;
-
-
-		var that = this;
-		this._iterateIntervalOverAxis(interval, function(j) {
-
-			for(var i = 0; i < this.specialLabels.length; i++) {
-
-				if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
-
-					return false;
-
-				}
-
-			}
-
-
-			if(Math.abs(this.axis.graphToCanvasInterval(j, interval)) < pixelThresh) {
-
-				return true;
-
-			}
+		if(this.axis.type === this.axis.TYPE_LINEAR) {
 
 
 			context.beginPath();
 
 
-			var shade = this.getShade(scale, j);
+			var shade = this.getShade(scale, 0);
 
 			var hex = Math.floor((1 - shade) * 255);
 
@@ -3671,156 +3744,218 @@ ReferenceLinesAxis.prototype.drawLinesAtScale = function(context, toX, toY, scal
 			context.strokeStyle = color;
 
 
+			var that = this;
+			this._iterateIntervalOverAxis(interval, function(j) {
 
-			that.drawLine(context, toX, toY, j);
+				for(var i = 0; i < this.specialLabels.length; i++) {
+
+					if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
+
+						return false;
+
+					}
+
+				}
+
+
+				that.drawLine(context, toX, toY, j);
+
+			});
 
 			context.stroke();
 
+
+
+		} else if(this.axis.type === this.axis.TYPE_LOG) {
+
+
+			var pixelThresh = 3;
+
+
+			var that = this;
+			this._iterateIntervalOverAxis(interval, function(j) {
+
+				for(var i = 0; i < this.specialLabels.length; i++) {
+
+					if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
+
+						return false;
+
+					}
+
+				}
+
+
+				if(Math.abs(this.axis.graphToCanvasInterval(j, interval)) < pixelThresh) {
+
+					return true;
+
+				}
+
+
+				context.beginPath();
+
+
+				var shade = this.getShade(scale, j);
+
+				var hex = Math.floor((1 - shade) * 255);
+
+				var color = 'rgba(0, 0, 0, ' + (1 - shade) + ')';
+				context.strokeStyle = color;
+
+
+
+				that.drawLine(context, toX, toY, j);
+
+				context.stroke();
+
+			});
+
+
+		}
+
+	}
+
+
+	drawSpecialLines(context, toX, toY) {
+
+		// Draw special lines
+
+		for(var i = 0; i < this.specialLabels.length; i++) {
+
+			var sl = this.specialLabels[i];
+
+			context.beginPath();
+			context.strokeStyle = sl[2];
+
+			if(sl.length === 4) {
+
+				context.setLineDash(sl[3]);
+
+			}
+
+
+			this.drawLine(context, toX, toY, sl[0]);
+
+
+			context.stroke();
+			context.setLineDash([]);
+
+		}
+
+	}
+
+
+	drawLabel(context, toX, toY, offset, text, weight) {
+
+		var centerX,
+			centerY;
+
+		var height = 14,
+			inset = 20;
+
+		if(this.axis.orientation) {
+			centerX = toX(offset);
+			centerY = inset;
+		} else {
+			centerX = inset;
+			centerY = toY(offset);
+		}
+
+
+		context.textAlign = 'center';
+		context.textBaseline = 'middle';
+		
+		var width = context.measureText(text).width + 4;
+
+		// var width = 40;
+
+		context.fillStyle = 'rgba(245, 245, 245, ' + weight + ')';
+		context.fillRect(centerX - (width / 2), 
+			centerY - (height / 2), 
+			width, 
+			height);
+
+
+		context.fillStyle = 'rgba(0, 0, 0, ' + weight + ')';
+		context.fillText(text, centerX, centerY);
+
+	}
+
+
+	_isIntersectingSpecialLabel(j) {
+
+		for(var i = 0; i < this.specialLabels.length; i++) {
+
+			var d = this.axis.graphToCanvas(j) - this.axis.graphToCanvas(this.specialLabels[i][0]);
+			
+			var intersectSpecialLabel = Math.abs(d) < this.minimum_label_distance;
+
+
+			if(intersectSpecialLabel) {
+
+				return true;
+
+			}
+
+		}
+
+
+		return false;
+
+	}
+
+
+	drawLabelsAtScale(context, toX, toY, scale) {
+
+
+		var interval = Math.pow(this.line_multiples, scale);
+
+
+		var that = this;
+		this._iterateIntervalOverAxis(interval, function(j) {
+			
+			
+			if(this._isIntersectingSpecialLabel(j)) {
+
+				return false;
+
+			}
+
+
+
+			var d = Math.abs(that.axis.graphToCanvasInterval(j, interval));
+
+			var intersectOtherLabels = d < that.minimum_label_distance;
+
+			if(intersectOtherLabels) {
+
+				return true;
+
+			}
+
+
+			var weight = Math.abs(d - that.minimum_label_distance) / 20;
+
+			that.drawLabel(context, toX, toY, j, (Math.round(j * 1e10) / 1e10).toExponential(), weight);
+
 		});
 
-
-	}
-
-};
-
-
-ReferenceLinesAxis.prototype.drawSpecialLines = function(context, toX, toY) {
-
-	// Draw special lines
-
-	for(var i = 0; i < this.specialLabels.length; i++) {
-
-		var sl = this.specialLabels[i];
-
-		context.beginPath();
-		context.strokeStyle = sl[2];
-
-		if(sl.length === 4) {
-
-			context.setLineDash(sl[3]);
-
-		}
-
-
-		this.drawLine(context, toX, toY, sl[0]);
-
-
-		context.stroke();
-		context.setLineDash([]);
-
-	}
-
-};
-
-
-ReferenceLinesAxis.prototype.drawLabel = function(context, toX, toY, offset, text, weight) {
-
-	var centerX,
-		centerY;
-
-	var height = 14,
-		inset = 20;
-
-	if(this.axis.orientation) {
-		centerX = toX(offset);
-		centerY = inset;
-	} else {
-		centerX = inset;
-		centerY = toY(offset);
 	}
 
 
-	context.textAlign = 'center';
-	context.textBaseline = 'middle';
-	
-	var width = context.measureText(text).width + 4;
+	drawSpecialLabels(context, toX, toY) {
 
-	// var width = 40;
+		for(var i = 0; i < this.specialLabels.length; i++) {
 
-	context.fillStyle = 'rgba(245, 245, 245, ' + weight + ')';
-	context.fillRect(centerX - (width / 2), 
-		centerY - (height / 2), 
-		width, 
-		height);
-
-
-	context.fillStyle = 'rgba(0, 0, 0, ' + weight + ')';
-	context.fillText(text, centerX, centerY);
-
-};
-
-
-ReferenceLinesAxis.prototype._isIntersectingSpecialLabel = function(j) {
-
-	for(var i = 0; i < this.specialLabels.length; i++) {
-
-		var d = this.axis.graphToCanvas(j) - this.axis.graphToCanvas(this.specialLabels[i][0]);
-		
-		var intersectSpecialLabel = Math.abs(d) < this.minimum_label_distance;
-
-
-		if(intersectSpecialLabel) {
-
-			return true;
+			var sl = this.specialLabels[i];
+			this.drawLabel(context, toX, toY, sl[0], sl[1], 1);
 
 		}
 
 	}
 
-
-	return false;
-
-};
-
-
-ReferenceLinesAxis.prototype.drawLabelsAtScale = function(context, toX, toY, scale) {
-
-
-	var interval = Math.pow(this.line_multiples, scale);
-
-
-	var that = this;
-	this._iterateIntervalOverAxis(interval, function(j) {
-		
-		
-		if(this._isIntersectingSpecialLabel(j)) {
-
-			return false;
-
-		}
-
-
-
-		d = Math.abs(that.axis.graphToCanvasInterval(j, interval));
-
-		var intersectOtherLabels = d < that.minimum_label_distance;
-
-		if(intersectOtherLabels) {
-
-			return true;
-
-		}
-
-
-		var weight = Math.abs(d - that.minimum_label_distance) / 20;
-
-		that.drawLabel(context, toX, toY, j, (Math.round(j * 1e10) / 1e10).toExponential(), weight);
-
-	});
-
-};
-
-
-ReferenceLinesAxis.prototype.drawSpecialLabels = function(context, toX, toY) {
-
-	for(var i = 0; i < this.specialLabels.length; i++) {
-
-		var sl = this.specialLabels[i];
-		this.drawLabel(context, toX, toY, sl[0], sl[1], 1);
-
-	}
-
-};
+}
 
 
 module.exports = ReferenceLinesAxis;

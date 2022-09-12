@@ -1,6 +1,12 @@
 To do:
 
 
+-> Performance improvements
+-> Add auto-normalize
+-> Add gain slider
+
+-> Fixed special labels & lines (for axes and titles)
+
 
 -> Fix clicking bug with FFT (didn't work first time...)
 
@@ -21,43 +27,7 @@ To do:
 
 
 
-	-> Implement amplitude and phase changesa
-
-	-> Better name than editor and editor0
-
 
 -> Change buffer length in GLSL_frag shader (and performance updates)
 	-> Maybe webworker off-canvas rendering?
 
-
---------------------------------------
-
--> Consider spline interpolation on the line
-
--> Do something about variable buffer length
--> Add a "convert to IR" button that destroys oscillators
-
-
--> Waveform scrubber
-
-
-
-
-------------
-
--> Revise needsUpdate hack to make more efficient
-
--> Convert to classes
-
-
-
-
-
-
-
-
-FFT EQ (this should be very easy)
--> n-pixel padding
-
-
-Choppy canvas animation? Don't know why...

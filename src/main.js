@@ -42,28 +42,32 @@ og.editor = hz_editor.subEditor0;
 
 window.onresize = function() {
 
-	ir_canvas.width = window.innerWidth - 20;
-	ir_canvas.height = 500;
+
+	var height = 410;
+
+
+	ir_canvas.width = window.innerWidth;
+	ir_canvas.height = 410;
 
 
 	ir.needsUpdate = true;
 
 
-	fg_canvas2d.width = window.innerWidth - 20;
-	fg_canvas2d.height = 500;
+	fg_canvas2d.width = window.innerWidth / 2;
+	fg_canvas2d.height = 410;
 
-	fg_canvas3d.width = window.innerWidth - 20;
-	fg_canvas3d.height = 500;
+	fg_canvas3d.width = window.innerWidth / 2 - 20;
+	fg_canvas3d.height = 410;
 
-	fg_div.style = 'height: 500px';
+	fg_div.style = 'height: 410px; width: ' + fg_canvas2d.width + 'px;';
 
 	fg.needsUpdate = true;
 
 	fg.gl.viewport(0, 0, fg_canvas3d.width, fg_canvas3d.height);
 
 
-	og_canvas.width = window.innerWidth - 20;
-	og_canvas.height = 500;
+	og_canvas.width = window.innerWidth / 2 - 20;
+	og_canvas.height = 410;
 
 	og.needsUpdate = true;
 
@@ -112,7 +116,7 @@ function debounce(f, delay) {
 
 totalBuffer.addObserver(debounce(function() {
 
-	audio.update_convolver(this.buffer);
+	audio.updateConvolver(this.buffer);
 
 }, 1000));
 
