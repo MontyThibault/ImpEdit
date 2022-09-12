@@ -25,3 +25,4 @@ FFT EQ (this should be very easy)
 
 Hook up convolver with graph editor (convolver currently doesn't work for an unknown reason)
 Fix clicking bug with FFT (didn't work first time...)
+Choppy canvas animation? Don't know why...

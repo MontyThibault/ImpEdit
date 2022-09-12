@@ -24,8 +24,9 @@ window.onresize = function() {
 
 function draw() {
 
-	graph.draw(graph_context);
 	requestAnimationFrame(draw);
+
+	graph.draw(graph_context);
 
 }
 

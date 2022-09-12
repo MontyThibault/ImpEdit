@@ -758,12 +758,18 @@ function debounce(f, delay) {
 
 
 function Graph(canvas) {
+	
 	this.canvas = canvas;
 
 	this.xAxis = new Axis(true, -5, 5, function() { return canvas.width; });
 	this.yAxis = new Axis(false, -5, 5, function() { return canvas.height; });
 
 	this.reference = new ReferenceLines(this.xAxis, this.yAxis);
+
+	this.reference.xRef.specialLabels.push([0, 'Y', '#0000FF']);
+	this.reference.xRef.specialLabels.push([5, 'END', '#00CC00', [10, 3, 2, 3]]);
+	this.reference.yRef.specialLabels.push([0, 'X', '#0000FF']);
+
 
 	this.xAxisRange = new RangeSlider(this.xAxis, this.yAxis);
 	this.yAxisRange = new RangeSlider(this.yAxis, this.xAxis);
@@ -774,8 +780,8 @@ function Graph(canvas) {
 
 	this.lineeditor.addControlPoint(0, 0);
 
-	this.xAxisRange.mousecontrol(this.mousecontrol);
-	this.yAxisRange.mousecontrol(this.mousecontrol);
+	this.xAxisRange.addMouseControl(this.mousecontrol);
+	this.yAxisRange.addMouseControl(this.mousecontrol);
 
 
 	this.mouseBindings();
@@ -846,6 +852,7 @@ Graph.prototype.addControlPoint = function(x, y) {
 
 	this.lineeditor.addControlPoint(fromX, fromY);
 };
+
 
 Graph.prototype.mouseBindings = function() {
 
@@ -1056,8 +1063,9 @@ window.onresize = function() {
 
 function draw() {
 
-	graph.draw(graph_context);
 	requestAnimationFrame(draw);
+
+	graph.draw(graph_context);
 
 }
 
@@ -1591,7 +1599,7 @@ RangeSlider.prototype.ondblclick = function() {
 };
 
 
-RangeSlider.prototype.mousecontrol = function(mousecontrol) {
+RangeSlider.prototype.addMouseControl = function(mousecontrol) {
 
 	this._mousecontrol = mousecontrol;
 
@@ -1673,7 +1681,6 @@ function ReferenceLines(principal_axis, secondary_axis) {
 
 	this.xRef.minimum_label_distance = 60;
 	this.yRef.minimum_label_distance = 25;
-
 }
 
 
@@ -1752,11 +1759,13 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
 
-	this.xRef.drawAxes(context, toX, toY);
-	this.yRef.drawAxes(context, toX, toY);
+	this.xRef.drawSpecialLines(context, toX, toY);
+	this.yRef.drawSpecialLines(context, toX, toY);
 
 	this.xRef.drawLabels(context, toX, toY);
 	this.yRef.drawLabels(context, toX, toY);
+
+
 
 };
 
@@ -1776,6 +1785,10 @@ function ReferenceLinesAxis(principal_axis, secondary_axis) {
 
 	// Increase this to see less frequent 
 	this.minimum_label_distance = 100; //px
+
+
+	// [[labelCoord, text, strokeStyle, <dashing> (optional)], ...]
+	this.specialLabels = [];
 }
 
 ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
@@ -1807,8 +1820,7 @@ ReferenceLinesAxis.prototype.getShade = function(scale) {
 };
 
 
-ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale) {
-
+ReferenceLinesAxis.prototype.drawLine = function(context, toX, toY, j) {
 
 	function moveTo(x, y) {
 		context.moveTo(toX(x), toY(y));
@@ -1819,6 +1831,19 @@ ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale) {
 	}
 
 
+	var startP = j,
+		endP = j,
+		startS = this.saxis.min,
+		endS = this.saxis.max;
+
+	
+	this.axis.orientationf(moveTo, startP, startS);
+	this.axis.orientationf(lineTo, endP, endS);
+
+};
+
+
+ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale) {
 	
 	var interval = Math.pow(this.line_multiples, scale);
 	var shade = this.getShade(scale);
@@ -1831,16 +1856,19 @@ ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale) {
 
 	context.beginPath();
 
+	var that = this;
 	this._iterateIntervalOverAxis(interval, function(j) {
 
-		var startP = j,
-			endP = j,
-			startS = this.saxis.min,
-			endS = this.saxis.max;
+		for(var i = 0; i < this.specialLabels.length; i++) {
 
-		
-		this.axis.orientationf(moveTo, startP, startS);
-		this.axis.orientationf(lineTo, endP, endS);
+			if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
+				return;
+			}
+
+		}
+
+
+		that.drawLine(context, toX, toY, j);
 
 	});
 
@@ -1849,48 +1877,48 @@ ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale) {
 };
 
 
-ReferenceLinesAxis.prototype.drawAxes = function(context, toX, toY) {
+ReferenceLinesAxis.prototype.drawSpecialLines = function(context, toX, toY) {
+
+	// Draw special lines
+
+	for(var i = 0; i < this.specialLabels.length; i++) {
+
+		var sl = this.specialLabels[i];
+
+		context.beginPath();
+		context.strokeStyle = sl[2];
+
+		if(sl.length === 4) {
+
+			context.setLineDash(sl[3]);
+
+		}
 
 
-	function moveTo(x, y) {
-		context.moveTo(toX(x), toY(y));
+		this.drawLine(context, toX, toY, sl[0]);
+
+
+		context.stroke();
+		context.setLineDash([]);
+
 	}
-
-	function lineTo(x, y) {
-		context.lineTo(toX(x), toY(y));
-	}
-
-
-	// Draw axis lines in blue
-
-	context.strokeStyle = '#0000FF';
-
-	var startP = 0,
-		endP = 0,
-		startS = this.saxis.min,
-		endS = this.saxis.max;
-
-	context.beginPath();
-
-	this.axis.orientationf(moveTo, startP, startS);
-	this.axis.orientationf(lineTo, endP, endS);
-
-	context.stroke();
-
 
 };
 
-ReferenceLinesAxis.prototype._drawLabel = function(context, toX, toY, offset, text) {
 
+ReferenceLinesAxis.prototype.drawLabel = function(context, toX, toY, offset, text) {
 
 	var centerX,
 		centerY;
 
+	var height = 14,
+		inset = 20;
+
 	if(this.axis.orientation) {
 		centerX = toX(offset);
-		centerY = 20;
+		centerY = inset;
 	} else {
-		centerX = 20;
+		centerX = inset;
 		centerY = toY(offset);
 	}
 
@@ -1898,15 +1926,16 @@ ReferenceLinesAxis.prototype._drawLabel = function(context, toX, toY, offset, te
 	context.textAlign = 'center';
 	context.textBaseline = 'middle';
 	
-	var width = context.measureText(text).width;
+	var width = context.measureText(text).width + 4;
 
 	// var width = 40;
 
-	context.fillStyle = '#F5F5F5';
+	context.fillStyle = 'rgba(245, 245, 245, 0.8)';
 	context.fillRect(centerX - (width / 2), 
-		centerY - 7, 
+		centerY - (height / 2), 
 		width, 
-		14);
+		height);
+
 
 	context.fillStyle = 'rgb(0, 0, 0)';
 	context.fillText(text, centerX, centerY);
@@ -1925,10 +1954,30 @@ ReferenceLinesAxis.prototype.drawLabels = function(context, toX, toY) {
 
 	var that = this;
 	this._iterateIntervalOverAxis(interval, function(j) {
-	
-		that._drawLabel(context, toX, toY, j, (Math.round(j * 1e10) / 1e10).toExponential());
+		
+		for(var i = 0; i < that.specialLabels.length; i++) {
+
+			var d = that.axis.graphToCanvas(j) - that.axis.graphToCanvas(that.specialLabels[i][0]);
+			if(Math.abs(d) < that.minimum_label_distance) {
+
+				return;
+
+			}
+
+		}
+
+		that.drawLabel(context, toX, toY, j, (Math.round(j * 1e10) / 1e10).toExponential());
 
 	});
+
+
+
+	for(var i = 0; i < that.specialLabels.length; i++) {
+
+		var sl = that.specialLabels[i];
+		that.drawLabel(context, toX, toY, sl[0], sl[1]);
+
+	}
 
 };
 
