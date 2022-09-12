@@ -292,16 +292,16 @@ class RangeSlider {
 			var sl = this.specialLabels[i];
 
 
-			var p = this.graphToSlider(sl[0]);
+			var p = this.graphToSlider(sl.coord);
 
 
 			context.beginPath();
 
-			context.strokeStyle = sl[2];
+			context.strokeStyle = sl.strokeStyle;
 
 			if(sl.length === 4) {
 
-				context.setLineDash(sl[3]);
+				context.setLineDash(sl.dash);
 
 			}
 

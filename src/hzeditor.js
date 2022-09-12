@@ -18,7 +18,7 @@ class HzEditor extends PointEditor {
 
 
 		this.subEditor.defaultX = 1000; // Hz
-		this.subEditor.defaultY = -10; // Damping
+		this.subEditor.defaultY = -100; // Damping
 
 		this.subEditor0.defaultX = 0.5; // Phase (0 - 2pi)
 		this.subEditor0.defaultY = 0.5; // Amplitude

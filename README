@@ -1,21 +1,7 @@
 To do:
 
 
-
--> Fix frequency input precision
-
--> Fix clicking bug with FFT (didn't work first time...)
-
-
-
-
--> dat.gui log scale
-
--> Lines not drawing on scrollbar
-
-/////////////////////////
-
-
+-> Usage tests
 
 -> Delegate Laplace rendering to seperate webworker
 -> Delegate normal rendering to seperate webworker
