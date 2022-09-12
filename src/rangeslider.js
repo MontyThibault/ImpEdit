@@ -1,19 +1,22 @@
-function RangeSlider(orientation, axis) {
-
-	this.orientation = orientation ? 
-		function(f, x, y) { f(x, y); } : function(f, x, y) { f(y, x); };
+function RangeSlider(axis) {
 
 	this.axis = axis;
 
+
+	// These will be delegated to the axis class.
+	this.minLimit;
+	this.maxLimit;
 }
 
 
 RangeSlider.prototype.draw = function(context, toX, toY) {
 	
+	
+
 };
 
 
-RangeSlider.prototype.getdistance = function(x, y) {
+RangeSlider.prototype.distanceTo = function(x, y) {
 
 };
 

@@ -70,6 +70,9 @@ Graph.prototype.draw = function(context) {
 	this.xAxisReference.draw(context, toX, toY);
 	this.yAxisReference.draw(context, toX, toY);
 
+	this.xAxisReference.drawLabels(context, toX, toY);
+	this.yAxisReference.drawLabels(context, toX, toY);
+
 	// this.xAxis.drawLines(context, toX, toY);
 	// this.yAxis.drawLines(context, toX, toY);
 	// this.xAxis.drawLabels(context, toX, toY);
