@@ -2761,8 +2761,8 @@ function ReferenceLinesAxis(principal_axis, secondary_axis) {
 
 ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
 
-	var begin = Math.ceil(this.axis.min / interval) * interval,
-		end = Math.floor(this.axis.max / interval) * interval;
+	var begin = Math.floor(this.axis.min / interval) * interval,
+		end = Math.ceil(this.axis.max / interval) * interval;
 
 
 	for(var j = begin; j <= end; j += interval) {
@@ -2943,7 +2943,7 @@ ReferenceLinesAxis.prototype.drawSpecialLines = function(context, toX, toY) {
 };
 
 
-ReferenceLinesAxis.prototype.drawLabel = function(context, toX, toY, offset, text) {
+ReferenceLinesAxis.prototype.drawLabel = function(context, toX, toY, offset, text, weight) {
 
 	var centerX,
 		centerY;
@@ -2967,15 +2967,38 @@ ReferenceLinesAxis.prototype.drawLabel = function(context, toX, toY, offset, tex
 
 	// var width = 40;
 
-	context.fillStyle = 'rgba(245, 245, 245, 0.8)';
+	context.fillStyle = 'rgba(245, 245, 245, ' + weight + ')';
 	context.fillRect(centerX - (width / 2), 
 		centerY - (height / 2), 
 		width, 
 		height);
 
 
-	context.fillStyle = 'rgb(0, 0, 0)';
+	context.fillStyle = 'rgba(0, 0, 0, ' + weight + ')';
 	context.fillText(text, centerX, centerY);
+
+};
+
+
+ReferenceLinesAxis.prototype._isIntersectingSpecialLabel = function(j) {
+
+	for(var i = 0; i < this.specialLabels.length; i++) {
+
+		var d = this.axis.graphToCanvas(j) - this.axis.graphToCanvas(this.specialLabels[i][0]);
+		
+		var intersectSpecialLabel = Math.abs(d) < this.minimum_label_distance;
+
+
+		if(intersectSpecialLabel) {
+
+			return true;
+
+		}
+
+	}
+
+
+	return false;
 
 };
 
@@ -2989,25 +3012,18 @@ ReferenceLinesAxis.prototype.drawLabelsAtScale = function(context, toX, toY, sca
 	var that = this;
 	this._iterateIntervalOverAxis(interval, function(j) {
 		
-		for(var i = 0; i < that.specialLabels.length; i++) {
+		
+		if(this._isIntersectingSpecialLabel(j)) {
 
-			var d = that.axis.graphToCanvas(j) - that.axis.graphToCanvas(that.specialLabels[i][0]);
-			
-			var intersectSpecialLabel = Math.abs(d) < that.minimum_label_distance;
-
-
-			if(intersectSpecialLabel) {
-
-				return false;
-
-			}
+			return false;
 
 		}
 
 
-		d = that.axis.graphToCanvasInterval(j, interval);
 
-		var intersectOtherLabels = Math.abs(d) < that.minimum_label_distance;
+		d = Math.abs(that.axis.graphToCanvasInterval(j, interval));
+
+		var intersectOtherLabels = d < that.minimum_label_distance;
 
 		if(intersectOtherLabels) {
 
@@ -3016,7 +3032,9 @@ ReferenceLinesAxis.prototype.drawLabelsAtScale = function(context, toX, toY, sca
 		}
 
 
-		that.drawLabel(context, toX, toY, j, (Math.round(j * 1e10) / 1e10).toExponential());
+		var weight = Math.abs(d - that.minimum_label_distance) / 20;
+
+		that.drawLabel(context, toX, toY, j, (Math.round(j * 1e10) / 1e10).toExponential(), weight);
 
 	});
 
@@ -3028,7 +3046,7 @@ ReferenceLinesAxis.prototype.drawSpecialLabels = function(context, toX, toY) {
 	for(var i = 0; i < this.specialLabels.length; i++) {
 
 		var sl = this.specialLabels[i];
-		this.drawLabel(context, toX, toY, sl[0], sl[1]);
+		this.drawLabel(context, toX, toY, sl[0], sl[1], 1);
 
 	}
 
