@@ -32,19 +32,20 @@ function debounce(f, delay) {
 
 class Graph {
 	
-	constructor(canvas, xAxis, yAxis) {
+	constructor(onscreenCanvas) {
 
-		this.canvas = canvas;
-		this.context = canvas.getContext('2d');
+		this.canvas = document.createElement('canvas');
+		this.context = this.canvas.getContext('2d');
+
+		this.onscreenCanvas = onscreenCanvas;
+		this.onscreenContext = onscreenCanvas.getContext('2d');
 
 		this.mousecontrol = new MouseControl(this);
-		this.mouseBindings();
-
 
 		this.vizIR = [];
 
-
 		this.needsUpdate = true;
+
 	}
 
 
@@ -80,6 +81,7 @@ class Graph {
 
 	draw() {
 
+
 		if(!this.needsUpdate) {
 			return;
 		}
@@ -93,9 +95,28 @@ class Graph {
 
 
 		this._drawElements(this.context, toX, toY);
-
+		this.copyToCanvas();
 
 		this.needsUpdate = false;
+
+	}
+
+
+	copyToCanvas() {
+
+		this.onscreenContext.clearRect(0, 0, this.onscreenCanvas.width, this.onscreenCanvas.height);
+		this.onscreenContext.drawImage(this.canvas, 0, 0, this.canvas.width, this.canvas.height);
+
+	}
+
+
+	setWidthHeight(w, h) {
+
+		this.canvas.width = w;
+		this.canvas.height = h;
+
+		this.needsUpdate = true;
+
 	}
 
 
@@ -128,11 +149,11 @@ class Graph {
 	}
 
 
-	mouseBindings() {
+	mouseBindings(canvas) {
 
-		this.canvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
-		this.canvas.ondblclick = pdsc(this.mousecontrol, this.mousecontrol.ondblclick);
-		this.canvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
+		canvas.onmousedown = pdsc(this.mousecontrol, this.mousecontrol.onmousedown);
+		canvas.ondblclick = pdsc(this.mousecontrol, this.mousecontrol.ondblclick);
+		canvas.onmousewheel = pdsc(this.mousecontrol, this.mousecontrol.onscroll);
 
 
 		var that = this;

@@ -15,61 +15,57 @@ var BufferSum = require('./buffersum.js');
 var HzEditor = require('./hzeditor.js');
 
 var ir_canvas = document.getElementById('ir_graph');
-
 var fg_canvas2d = document.getElementById('fg_graph2d');
 var fg_canvas3d = document.getElementById('fg_graph3d');
 var fg_div = document.getElementById('fg_div');
-
 var og_canvas = document.getElementById('og_graph');
 
 
-var ir = new IRGraph(ir_canvas);
 
+
+var ir = new IRGraph(ir_canvas);
 var fg = new FrequencyGraph(fg_canvas2d, fg_canvas3d);
 var og = new OffsetGraph(og_canvas);
 
 
-
-
-/////
 var hz_editor = new HzEditor(fg, og);
 
 fg.editor = hz_editor.subEditor;
 og.editor = hz_editor.subEditor0;
-/////
+
+
+ir.mouseBindings(ir_canvas);
+fg.mouseBindings(fg_canvas2d);
+og.mouseBindings(og_canvas);
 
 
 
 window.onresize = function() {
 
 
-	var height = 410;
+	var height = 410,
+		width = $(window).width(),
+		halfwidth = $(window).width() / 2;
 
 
-	ir_canvas.width = window.innerWidth;
-	ir_canvas.height = 410;
+	ir.setWidthHeight(width, height);
+	fg.setWidthHeight(halfwidth, height);
+	og.setWidthHeight(halfwidth, height);
 
+	fg_div.style = 'height: 410px; width: ' + halfwidth + 'px;';
 
-	ir.needsUpdate = true;
+	ir_canvas.width = width;
+	ir_canvas.height = height;
 
+	fg_canvas2d.width = halfwidth;
+	fg_canvas2d.height = height;
 
-	fg_canvas2d.width = window.innerWidth / 2;
-	fg_canvas2d.height = 410;
+	fg_canvas3d.width = halfwidth;
+	fg_canvas3d.height = height;
 
-	fg_canvas3d.width = window.innerWidth / 2 - 20;
-	fg_canvas3d.height = 410;
-
-	fg_div.style = 'height: 410px; width: ' + fg_canvas2d.width + 'px;';
-
-	fg.needsUpdate = true;
-
-	fg.gl.viewport(0, 0, fg_canvas3d.width, fg_canvas3d.height);
-
-
-	og_canvas.width = window.innerWidth / 2 - 20;
-	og_canvas.height = 410;
-
-	og.needsUpdate = true;
+	og_canvas.width = halfwidth;
+	og_canvas.height = height;
+	
 
 
 	draw();
@@ -94,8 +90,6 @@ attachAudioDOM(audio);
 
 
 
-// Change debounce 
-
 function debounce(f, delay) {
   var timer = null;
 
@@ -113,35 +107,43 @@ function debounce(f, delay) {
 
 
 
-
 totalBuffer.addObserver(debounce(function() {
 
 	audio.updateConvolver(this.buffer);
 
-}, 1000));
+}, 200));
+
+
+totalBuffer.addObserver(function() {
+
+	ir.needsUpdate = true;
+	fg.needsUpdate = true;
+
+});
+
+
+hz_editor.addObserver(function() {
+
+	this.subEditor.graph.needsUpdate = true;
+	this.subEditor0.graph.needsUpdate = true;
+
+});
 
 
 
-var m = 0;
+
 
 function draw() {
 
 	requestAnimationFrame(draw);
 
 
-	ir.needsUpdate = fg.needsUpdate = og.needsUpdate = ir.needsUpdate || fg.needsUpdate || og.needsUpdate;;
-
-
 	ir.draw();
 	fg.draw();
 	og.draw();
+
+	
 }
 
 window.onresize();
-
-
-
-///////////////////////
-
-
 
