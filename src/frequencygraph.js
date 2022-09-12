@@ -1,4 +1,5 @@
 var Graph = require('./graph.js');
+var Axis = require('./axis.js');
 
 
 class FrequencyGraph extends Graph {
@@ -7,6 +8,13 @@ class FrequencyGraph extends Graph {
 	constructor(canvas2d, canvas3d) {
 
 		super(canvas2d);
+
+		this.xAxis = new Axis(true, -10, 10, function() { return canvas2d.width; });
+		this.yAxis = new Axis(false, -10, 10, function() { return canvas2d.height; });
+
+		this.initAxes(this.xAxis, this.yAxis);
+
+
 
 		this.canvas3d = canvas3d;
 		this.laplaceNeedsUpdate = true;
@@ -44,7 +52,7 @@ class FrequencyGraph extends Graph {
 
 	_initiateWebGL() {
 
-		
+
 
 	}
 
