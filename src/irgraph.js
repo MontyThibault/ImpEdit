@@ -43,6 +43,13 @@ class IRGraph extends Graph {
 	}
 
 
+	getIR(buffer, samplerate) {
+
+		this.lineeditor.toBuffer(buffer, samplerate);
+
+	}
+
+
 }
 
 
