@@ -12,7 +12,7 @@ class FrequencyGraph extends Graph {
 		super(canvas2d);
 
 		this.xAxis = new Axis(true, 1, 10, function() { return canvas2d.width; });
-		this.yAxis = new Axis(false, 10, 10000, function() { return canvas2d.height; });
+		this.yAxis = new LogAxis(false, 10, 10000, function() { return canvas2d.height; });
 
 		this.yAxis.maxLimit = 10000;
 		this.xAxis.minLimit = -100000;
@@ -148,6 +148,13 @@ class FrequencyGraph extends Graph {
 		}
 
 
+		{
+
+			this.gl.uniform1iv(this.programInfo.uniformLocations.axisTypes, this.axisTypes);
+
+		}
+
+
 		this.gl.useProgram(this.shaderProgram);
 
 
@@ -166,6 +173,8 @@ class FrequencyGraph extends Graph {
 
 		const vsSource = `
 
+			uniform lowp int uAxisTypes[2];
+
 			attribute vec2 aVertexScreenPosition;
 			attribute vec2 aVertexGraphPosition;
 
@@ -175,7 +184,21 @@ class FrequencyGraph extends Graph {
 			void main() {
 
 				gl_Position = vec4(aVertexScreenPosition, 0.0, 1.0);
+
+
 				vVertexGraphPosition = aVertexGraphPosition;
+
+				if(uAxisTypes[0] == 1) {
+
+					vVertexGraphPosition.x = log(vVertexGraphPosition.x);
+
+				}
+
+				if(uAxisTypes[1] == 1) {
+
+					vVertexGraphPosition.y = log(vVertexGraphPosition.y);
+
+				}
 
 			}			
 
@@ -188,8 +211,8 @@ class FrequencyGraph extends Graph {
 			#define samplerate 96000.0
 			#define pi 3.1415926536
 
+			uniform lowp int uAxisTypes[2];
 			uniform lowp float uIR[buffer_length];
-			// uniform int uIRLength;
 
 			varying lowp vec2 vVertexGraphPosition;
 
@@ -220,7 +243,7 @@ class FrequencyGraph extends Graph {
 			
 			lowp vec3 color_interp(lowp float x) {
 
-				lowp vec3 min = vec3(0.0, 0.0, 1.0);
+				lowp vec3 min = vec3(1.0, 1.0, 1.0);
 				lowp vec3 max = vec3(1.0, 1.0, 0.0);
 
 				lowp float minX = 0.0;
@@ -242,7 +265,25 @@ class FrequencyGraph extends Graph {
 
 			void main() {
 
-				lowp float laplace = computeLaplace(vVertexGraphPosition);
+
+				lowp vec2 vgp = vVertexGraphPosition;
+
+
+				if(uAxisTypes[0] == 1) {
+
+					vgp.x = exp(vgp.x);
+
+				}
+
+
+				if(uAxisTypes[1] == 1) {
+
+					vgp.y = exp(vgp.y);
+
+				}
+
+
+				lowp float laplace = computeLaplace(vgp);
 
 				gl_FragColor = vec4(color_interp(laplace), 1.0);
 
@@ -286,6 +327,7 @@ class FrequencyGraph extends Graph {
 
 
 
+		/////////////////////
 
 		this.graphPositions = new Float32Array(screenPositions);
 
@@ -298,10 +340,27 @@ class FrequencyGraph extends Graph {
 
 
 
+		////////////////////
+
+		this.axisTypes = new Int32Array(2);
+
+		this.axisTypes[0] = this.xAxis.type;
+		this.axisTypes[1] = this.yAxis.type;
+
+		const axisBuffer = this.gl.createBuffer();
+
+		this.gl.bindBuffer(this.gl.ARRAY_BUFFER, axisBuffer);
+		this.gl.bufferData(this.gl.ARRAY_BUFFER, 
+					this.axisTypes,
+					this.gl.STATIC_DRAW);
+
+
+
 		this.buffers = {
 
 			screenPosition: screenBuffer,
-			graphPosition: graphBuffer
+			graphPosition: graphBuffer,
+			axisTypes: axisBuffer
 
 		};
 
@@ -342,7 +401,8 @@ class FrequencyGraph extends Graph {
 
 			uniformLocations: {
 
-				ir: this.gl.getUniformLocation(this.shaderProgram, 'uIR')
+				ir: this.gl.getUniformLocation(this.shaderProgram, 'uIR'),
+				axisTypes: this.gl.getUniformLocation(this.shaderProgram, 'uAxisTypes')
 
 			}
 

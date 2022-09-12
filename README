@@ -1,18 +1,23 @@
 To do:
 
+-> Implement log and axial scaling
+-> Log scaling in hand slider
+-> Implement log coloring in webGL script
 
-
--> Begin on Laplace editor. (WebGL implementation)
--> Perhaps some decorator system for drawing styles?
-
--> IRGraph draw vizIR
-
+-> vizIR sum
 
 
 -> n-pixel padding
 -> Waveform scrubber
 
--> Implement log and axial scaling
+
+
+Convert to classes
+Change buffer size; automatically recompile shaders
+
+UI improvements
+
+-> Fix negative axis scaling bug (insert Math.abs's)
 
 
 

@@ -11,6 +11,8 @@ class LogAxis extends Axis {
 		this.minLimit = 1;
 		this.maxLimit = 10;
 
+		this.type = 1;
+
 	}
 
 
@@ -23,6 +25,7 @@ class LogAxis extends Axis {
 		return (Math.log(p) - lmin) / ldiff * this.get_full_extent();
 
 	}
+	
 
 	canvasToGraph(p) {
 

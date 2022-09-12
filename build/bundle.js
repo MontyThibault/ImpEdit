@@ -551,6 +551,12 @@ class Axis {
 
 	constructor(orientation, min, max, get_full_extent) {
 
+		this.TYPE_LINEAR = 0;
+		this.TYPE_LOG = 1;
+
+
+		this.type = 0;
+		
 
 		// true when x is the principal axis, false otherwise
 		this.orientation = orientation;
@@ -682,7 +688,6 @@ class Axis {
 	}
 
 }
-
 
 
 module.exports = Axis;
@@ -855,7 +860,7 @@ class FrequencyGraph extends Graph {
 		super(canvas2d);
 
 		this.xAxis = new Axis(true, 1, 10, function() { return canvas2d.width; });
-		this.yAxis = new Axis(false, 10, 10000, function() { return canvas2d.height; });
+		this.yAxis = new LogAxis(false, 10, 10000, function() { return canvas2d.height; });
 
 		this.yAxis.maxLimit = 10000;
 		this.xAxis.minLimit = -100000;
@@ -991,6 +996,13 @@ class FrequencyGraph extends Graph {
 		}
 
 
+		{
+
+			this.gl.uniform1iv(this.programInfo.uniformLocations.axisTypes, this.axisTypes);
+
+		}
+
+
 		this.gl.useProgram(this.shaderProgram);
 
 
@@ -1009,6 +1021,8 @@ class FrequencyGraph extends Graph {
 
 		const vsSource = `
 
+			uniform lowp int uAxisTypes[2];
+
 			attribute vec2 aVertexScreenPosition;
 			attribute vec2 aVertexGraphPosition;
 
@@ -1018,7 +1032,21 @@ class FrequencyGraph extends Graph {
 			void main() {
 
 				gl_Position = vec4(aVertexScreenPosition, 0.0, 1.0);
+
+
 				vVertexGraphPosition = aVertexGraphPosition;
+
+				if(uAxisTypes[0] == 1) {
+
+					vVertexGraphPosition.x = log(vVertexGraphPosition.x);
+
+				}
+
+				if(uAxisTypes[1] == 1) {
+
+					vVertexGraphPosition.y = log(vVertexGraphPosition.y);
+
+				}
 
 			}			
 
@@ -1031,8 +1059,8 @@ class FrequencyGraph extends Graph {
 			#define samplerate 96000.0
 			#define pi 3.1415926536
 
+			uniform lowp int uAxisTypes[2];
 			uniform lowp float uIR[buffer_length];
-			// uniform int uIRLength;
 
 			varying lowp vec2 vVertexGraphPosition;
 
@@ -1063,7 +1091,7 @@ class FrequencyGraph extends Graph {
 			
 			lowp vec3 color_interp(lowp float x) {
 
-				lowp vec3 min = vec3(0.0, 0.0, 1.0);
+				lowp vec3 min = vec3(1.0, 1.0, 1.0);
 				lowp vec3 max = vec3(1.0, 1.0, 0.0);
 
 				lowp float minX = 0.0;
@@ -1085,7 +1113,25 @@ class FrequencyGraph extends Graph {
 
 			void main() {
 
-				lowp float laplace = computeLaplace(vVertexGraphPosition);
+
+				lowp vec2 vgp = vVertexGraphPosition;
+
+
+				if(uAxisTypes[0] == 1) {
+
+					vgp.x = exp(vgp.x);
+
+				}
+
+
+				if(uAxisTypes[1] == 1) {
+
+					vgp.y = exp(vgp.y);
+
+				}
+
+
+				lowp float laplace = computeLaplace(vgp);
 
 				gl_FragColor = vec4(color_interp(laplace), 1.0);
 
@@ -1129,6 +1175,7 @@ class FrequencyGraph extends Graph {
 
 
 
+		/////////////////////
 
 		this.graphPositions = new Float32Array(screenPositions);
 
@@ -1141,10 +1188,27 @@ class FrequencyGraph extends Graph {
 
 
 
+		////////////////////
+
+		this.axisTypes = new Int32Array(2);
+
+		this.axisTypes[0] = this.xAxis.type;
+		this.axisTypes[1] = this.yAxis.type;
+
+		const axisBuffer = this.gl.createBuffer();
+
+		this.gl.bindBuffer(this.gl.ARRAY_BUFFER, axisBuffer);
+		this.gl.bufferData(this.gl.ARRAY_BUFFER, 
+					this.axisTypes,
+					this.gl.STATIC_DRAW);
+
+
+
 		this.buffers = {
 
 			screenPosition: screenBuffer,
-			graphPosition: graphBuffer
+			graphPosition: graphBuffer,
+			axisTypes: axisBuffer
 
 		};
 
@@ -1185,7 +1249,8 @@ class FrequencyGraph extends Graph {
 
 			uniformLocations: {
 
-				ir: this.gl.getUniformLocation(this.shaderProgram, 'uIR')
+				ir: this.gl.getUniformLocation(this.shaderProgram, 'uIR'),
+				axisTypes: this.gl.getUniformLocation(this.shaderProgram, 'uAxisTypes')
 
 			}
 
@@ -1635,6 +1700,8 @@ class LogAxis extends Axis {
 		this.minLimit = 1;
 		this.maxLimit = 10;
 
+		this.type = 1;
+
 	}
 
 
@@ -1647,6 +1714,7 @@ class LogAxis extends Axis {
 		return (Math.log(p) - lmin) / ldiff * this.get_full_extent();
 
 	}
+	
 
 	canvasToGraph(p) {
 
@@ -2528,50 +2596,66 @@ function ReferenceLines(principal_axis, secondary_axis) {
 
 
 
+// Take rate of change at point (in canvas-space), expanded to encompass the whole canvas,
+// and return log in base of line_multiples.
+
+// ex. If non-linear scale has rate of change 10 at point P, and canvas is 100 pixels,
+// then this returns log_{line_multiples} 1000.
+
+// Point argument is irrelevant for linear scaling.
+
+ReferenceLines.prototype._getScaleFactor = function(point, ref) {
+
+	var epsilon = 1e-10;
+
+	var rate = (ref.axis.canvasToGraph(point + epsilon) - ref.axis.canvasToGraph(point)) / epsilon;
+
+	var spanAtRate = rate * ref.axis.get_full_extent();
+
+	return Math.log(spanAtRate) / Math.log(ref.line_multiples);
+
+}
+
+
+
 // Generate array of shades and drawing callables
 ReferenceLines.prototype._getDrawingArray = function(ref) {
 
 
-	// scale-x refers to logarithmic values
+	// scale- before variables refers to logarithmic values
 
 	// Screen span
 
-	var scalefactor = Math.log(Math.abs(ref.axis.max - ref.axis.min)) / 
-		Math.log(ref.line_multiples);
+	var scalefactorTop = this._getScaleFactor(0, ref),
+		scalefactorBottom = this._getScaleFactor(ref.axis.get_full_extent(), ref);
 
 
+	// Draw this many scale levels below min 
 
-	// ex. scalelevels = 2 means to draw two "levels" of reference lines
-	// with shading proportional to canvas distance.
+	var scalefactorCutoff = 1.5;
 
-	// Fractional values are allowed. 
 
-	// screenwidth ~ ref.line_multiples ^ scalelevels
-	// -> scalelevels ~ log_{ref.line_multiples} screenwidth 
+	var scalefactorMin = Math.min(scalefactorTop, scalefactorBottom) - scalefactorCutoff,
+		scalefactorMax = Math.max(scalefactorTop, scalefactorBottom);
 
-	var scalelevels = Math.log(ref.axis.get_full_extent());
 
-	// We wish that screenwidth = 500 -> scalelevels = 2
+	scalefactorMin = Math.floor(scalefactorMin);
+	scalefactorMax = Math.ceil(scalefactorMax);
 
-	scalelevels /= Math.log(500);
-	scalelevels *= 2;
 
 
 	var a = [];
 
-	for(var i = 0; i < scalelevels; i++) {
+	for(var scale = scalefactorMin; scale < scalefactorMax; scale++) {
+		
 
-		var scale = Math.floor(scalefactor) - i;
-		var shade = ref.getShade(scale);
+		// Order by scale, not shade
 
-
-		// Revise this
-		a.push([shade, scale, function(context, toX, toY, scale) {
+		a.push([scale, scale, function(context, toX, toY, scale) {
 			ref.drawLines(context, toX, toY, scale);
 		}]);
 
 	}
-
 
 	return a;
 
@@ -2633,12 +2717,25 @@ function ReferenceLinesAxis(principal_axis, secondary_axis) {
 	this.specialLabels = [];
 }
 
+
 ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
 
 	var begin = Math.ceil(this.axis.min / interval) * interval,
 		end = Math.floor(this.axis.max / interval) * interval;
 
+
+	var pixelThresh = 3;
+
+
 	for(var j = begin; j <= end; j += interval) {
+
+
+		if(this.axis.graphToCanvas(j + interval) - this.axis.graphToCanvas(j) < pixelThresh) {
+
+			break;
+
+		}
+
 
 		f.call(this, j);
 
@@ -2647,14 +2744,26 @@ ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
 };
 
 
-ReferenceLinesAxis.prototype.getShade = function(scale) {
+ReferenceLinesAxis.prototype.getShade = function(scale, refPoint) {
 
 	// Get canvas distance
 
 	var interval = Math.pow(this.line_multiples, scale);
-	var cd = this.axis.graphToCanvas(interval) - this.axis.graphToCanvas(0);
+
+
+	// Change this to be more instantaneous 
+
+	var epsilon = 1e-10;
+
+	var cd = this.axis.graphToCanvas(refPoint + epsilon) - this.axis.graphToCanvas(refPoint);
+
+	cd /= epsilon;
+	cd *= interval;
+
 
 	// At this distance, lines appear completely black.
+	// Linear interpolation from this to zero.
+
 	var black_width = 200;
 
 	return 1 - Math.max(0, Math.min(1, Math.abs(cd) / black_width));
@@ -2685,36 +2794,83 @@ ReferenceLinesAxis.prototype.drawLine = function(context, toX, toY, j) {
 };
 
 
+// Eliminate duplication in this method
+
 ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale) {
 	
 	var interval = Math.pow(this.line_multiples, scale);
-	var shade = this.getShade(scale);
-
-	var hex = Math.floor((1 - shade) * 255);
-
-	var color = 'rgba(0, 0, 0, ' + (1 - shade) + ')';
-	context.strokeStyle = color;
 
 
-	context.beginPath();
+	if(this.axis.type === this.axis.TYPE_LINEAR) {
 
-	var that = this;
-	this._iterateIntervalOverAxis(interval, function(j) {
 
-		for(var i = 0; i < this.specialLabels.length; i++) {
+		context.beginPath();
 
-			if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
-				return;
+
+		var shade = this.getShade(scale, 0);
+
+		var hex = Math.floor((1 - shade) * 255);
+
+		var color = 'rgba(0, 0, 0, ' + (1 - shade) + ')';
+		context.strokeStyle = color;
+
+
+		var that = this;
+		this._iterateIntervalOverAxis(interval, function(j) {
+
+			for(var i = 0; i < this.specialLabels.length; i++) {
+
+				if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
+					return;
+				}
+
 			}
 
-		}
+
+			that.drawLine(context, toX, toY, j);
+
+		});
+
+		context.stroke();
 
 
-		that.drawLine(context, toX, toY, j);
 
-	});
+	} else if(this.axis.type === this.axis.TYPE_LOG) {
 
-	context.stroke();
+
+
+			var that = this;
+		this._iterateIntervalOverAxis(interval, function(j) {
+
+			for(var i = 0; i < this.specialLabels.length; i++) {
+
+				if(Math.abs(j - this.specialLabels[i][0]) < 1e-10) {
+					return;
+				}
+
+			}
+
+
+			context.beginPath();
+
+
+			var shade = this.getShade(scale, j);
+
+			var hex = Math.floor((1 - shade) * 255);
+
+			var color = 'rgba(0, 0, 0, ' + (1 - shade) + ')';
+			context.strokeStyle = color;
+
+
+
+			that.drawLine(context, toX, toY, j);
+
+			context.stroke();
+
+		});
+
+
+	}
 
 };
 
