@@ -134,7 +134,6 @@ class FrequencyGraph extends Graph {
 
 
 		{
-
 			this.gl.uniform1fv(this.programInfo.uniformLocations.ir, this.vizIR);
 
 		}
@@ -176,12 +175,59 @@ class FrequencyGraph extends Graph {
 
 		const fsSource = `
 
-			#define buffer_length 3
+			#define buffer_length 1000
+			#define samplerate 96000.0
 
 			uniform lowp float uIR[buffer_length];
 			// uniform int uIRLength;
 
 			varying lowp vec2 vVertexGraphPosition;
+
+			
+			lowp float computeLaplace(vec2 graphPosition) {
+
+
+				// Sum over terms f(t)e^st
+				// recall e^st = e^(re(s)t)(cos (imag s)t + i sin (imag s)t)
+
+				lowp float re_sum = 0.0;
+				lowp float im_sum = 0.0;
+				lowp float t;
+
+				for(int i = 0; i < buffer_length; i++) {
+
+					t = float(i) / samplerate;	
+
+					re_sum += exp(graphPosition.x) * cos(graphPosition.y * t);
+					im_sum += exp(graphPosition.x) * sin(graphPosition.y * t);
+
+				}
+
+				return re_sum;
+
+			}
+
+			
+			vec3 color_interp(lowp float x) {
+
+				vec3 min = vec3(0.0, 0.0, 1.0);
+				vec3 max = vec3(1.0, 1.0, 0.0);
+
+				lowp float minX = 0.0;
+				lowp float maxX = 1.0;
+
+
+				if(x <= minX) {
+					return min;
+				}
+
+				if(x >= maxX) {
+					return max;
+				}
+
+
+			}
+
 
 			void main() {
 

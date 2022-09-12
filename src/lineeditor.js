@@ -71,8 +71,8 @@ LineEditor.prototype.toBuffer = function(buffer, samplerate) {
 
 	// cp1 is the control point directly before the current point
 	// cp2 is the control point directly after the current point
-	var cp1 = this.controlpoints[0].x,
-		cp2 = this.controlpoints[1].x;
+	var cp1 = this.controlpoints[0],
+		cp2 = this.controlpoints[1];
 
 	var cpi = 1;
 	var escape = false;
@@ -82,12 +82,13 @@ LineEditor.prototype.toBuffer = function(buffer, samplerate) {
 		var time = i / samplerate;
 
 
-		while(time > cp2) {
+		while(time > cp2.x) {
 
 			cpi++;
 
 			// If this point is beyond all control points.
-			if(this.cpi === this.controlpoints.length) {
+			if(cpi  === this.controlpoints.length) {
+				cpi--;
 				buffer[i] = 0;
 
 				escape = true;
@@ -95,7 +96,7 @@ LineEditor.prototype.toBuffer = function(buffer, samplerate) {
 			}
 
 			cp1 = cp2;
-			cp2 = this.controlpoints[cpi].x;
+			cp2 = this.controlpoints[cpi];
 
 		}
 
@@ -106,13 +107,15 @@ LineEditor.prototype.toBuffer = function(buffer, samplerate) {
 
  		
  		// If this point is before all control points.
-		if(time < cp1) {
+		if(time < cp1.x) {
 			buffer[i] = 0;
 			continue;
 		}
 
 
-		buffer[i] = (time - cp1.x) * (cp2.y - cp1.y) / (cp2.x - cp1.x);
+		var slope = (cp2.y - cp1.y) / (cp2.x - cp1.x);
+		
+		buffer[i] = cp1.y + (time - cp1.x) * slope;
 
 	}
 
