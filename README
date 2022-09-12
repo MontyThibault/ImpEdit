@@ -1,38 +1,55 @@
 To do:
 
 
--> n-pixel padding
-
-
--> Implement log coloring in webGL script
-
-
-
 
 -> Fix clicking bug with FFT (didn't work first time...)
 
--> Do something about variable buffer length
-
-
-
 -> Implement axial scaling for oscillator phase and magnitude
-
-
--> Add a "convert to IR" button that destroys oscillators
-
 -> Graphical table to edit oscillator values
+
+
+-> Set up some sort of interactive interface screen, where you can choose a frequency, it sets the lowpass filter, then change sliders for damping, phase, amplitude at that frequency.
+
+
+	-> Frequency chosen at random
+	-> Set the lowpass to the frequency
+
+	-> Sliders to adjust:
+		-> Damping
+		-> Amplitude
+		-> Phase
+
+
+
+	-> Implement amplitude and phase changesa
+
+	-> Better name than editor and editor0
+
+
+-> Change buffer length in GLSL_frag shader (and performance updates)
+	-> Maybe webworker off-canvas rendering?
+
+
+--------------------------------------
 
 -> Consider spline interpolation on the line
 
+-> Do something about variable buffer length
+-> Add a "convert to IR" button that destroys oscillators
 
 
 -> Waveform scrubber
 
+
+
+
+------------
+
 -> Revise needsUpdate hack to make more efficient
 
+-> Convert to classes
 
-Convert to classes
-Change buffer size; automatically recompile shaders
+
 
 
 
@@ -40,6 +57,7 @@ Change buffer size; automatically recompile shaders
 
 
 FFT EQ (this should be very easy)
+-> n-pixel padding
 
 
 Choppy canvas animation? Don't know why...
