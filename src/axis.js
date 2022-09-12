@@ -37,27 +37,63 @@ class Axis {
 
 	_limits() {
 
-		this.min = (this.min > this.minLimit) ? this.min : this.minLimit;
-		this.max = (this.max < this.maxLimit) ? this.max : this.maxLimit;
+		if(this.minLimit < this.maxLimit) {
+
+			this.min = (this.min > this.minLimit) ? this.min : this.minLimit;
+			this.max = (this.max < this.maxLimit) ? this.max : this.maxLimit;
+
+		} else {
+
+			this.min = (this.min < this.minLimit) ? this.min : this.minLimit;
+			this.max = (this.max > this.maxLimit) ? this.max : this.maxLimit;
+
+		}
+		
 
 	}
 
 
 	_fixedWidthLimits() {
 
-		if(this.min < this.minLimit) {
 
-			var diff = this.minLimit - this.min;
+		if(this.minLimit < this.maxLimit) {
 
-			this.min += diff;
-			this.max += diff;
 
-		} else if(this.max > this.maxLimit) {
+			if(this.min < this.minLimit) {
 
-			var diff = this.max - this.maxLimit;
+				var diff = this.minLimit - this.min;
 
-			this.min -= diff;
-			this.max -= diff;
+				this.min += diff;
+				this.max += diff;
+
+			} else if(this.max > this.maxLimit) {
+
+				var diff = this.max - this.maxLimit;
+
+				this.min -= diff;
+				this.max -= diff;
+
+			}
+
+
+		} else {
+
+
+			if(this.min > this.minLimit) {
+
+				var diff = this.minLimit - this.min;
+
+				this.min += diff;
+				this.max += diff;
+
+			} else if(this.max < this.maxLimit) {
+
+				var diff = this.max - this.maxLimit;
+
+				this.min -= diff;
+				this.max -= diff;
+
+			}
 
 		}
 
@@ -164,9 +200,7 @@ class Axis {
 
 	panCanvas(diff, pos) {
 
-		var offset = this.graphToCanvas(this.min);
-
-		diff = this.canvasToGraph(diff + offset) - this.min;
+		diff = this.canvasToGraphInterval(pos, diff);
 
 		this.panGraph(diff);
 

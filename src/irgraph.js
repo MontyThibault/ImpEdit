@@ -11,7 +11,7 @@ class IRGraph extends Graph {
 		super(canvas);
 
 		this.xAxis = new Axis(true, -1, 2, function() { return canvas.width; });
-		this.yAxis = new Axis(false, -1.5, 1.5, function() { return canvas.height; });
+		this.yAxis = new Axis(false, 1.5, -1.5, function() { return canvas.height; });
 
 		this.initAxes(this.xAxis, this.yAxis);
 

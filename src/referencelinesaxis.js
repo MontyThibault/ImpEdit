@@ -20,8 +20,12 @@ function ReferenceLinesAxis(principal_axis, secondary_axis) {
 
 ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
 
-	var begin = Math.floor(this.axis.min / interval) * interval,
-		end = Math.ceil(this.axis.max / interval) * interval;
+	var min = Math.min(this.axis.min, this.axis.max),
+		max = Math.max(this.axis.min, this.axis.max);
+
+
+	var begin = Math.floor(min / interval) * interval,
+		end = Math.ceil(max / interval) * interval;
 
 
 	for(var j = begin; j <= end; j += interval) {
