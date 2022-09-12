@@ -11,6 +11,8 @@ var attachAudioDOM = require("./audioDOM.js");
 var oscillatorDOM = require('./oscillatorDOM.js');
 var BufferSum = require('./buffersum.js');
 
+var BufferLink = require('./bufferlink.js');
+
 
 var HzEditor = require('./hzeditor.js');
 
@@ -125,33 +127,12 @@ ir.setVizIR(totalBuffer.buffer);
 fg.setVizIR(totalBuffer.buffer);
 
 
+totalBuffer.addObserver(function() {
 
-var audio = new Audio();
+	ir.needsUpdate = true;
+	fg.needsUpdate = true;
 
-
-function throttle(fn, threshhold, scope) {
-  threshhold || (threshhold = 250);
-  var last,
-      deferTimer;
-  return function () {
-    var context = scope || this;
-
-    var now = +new Date,
-        args = arguments;
-    if (last && now < last + threshhold) {
-      // hold on to it
-      clearTimeout(deferTimer);
-      deferTimer = setTimeout(function () {
-        last = now;
-        fn.apply(context, args);
-      }, threshhold);
-    } else {
-      last = now;
-      fn.apply(context, args);
-    }
-  };
-}
-
+});
 
 
 totalBuffer.addObserver(function() {
@@ -163,26 +144,14 @@ totalBuffer.addObserver(function() {
 
 
 
-totalBuffer.addObserver(throttle(function() {
+var audio = new Audio();
 
-	audio.updateConvolver(this.buffer);
-
-}, 200));
-
-
-// Prepare default buffer.
-
-totalBuffer.notifyObservers();
+var bufferLink = new BufferLink(totalBuffer, audio);
 
 
 
-totalBuffer.addObserver(function() {
 
-	ir.needsUpdate = true;
-	fg.needsUpdate = true;
+// DOM GUI's
 
-});
-
-
-oscillatorDOM(ir, fg, og, hz_editor);
-attachAudioDOM(audio);
+oscillatorDOM(ir, fg, og, hz_editor, audio);
+attachAudioDOM(audio, bufferLink);

@@ -43,6 +43,7 @@ class FrequencyGraph extends Graph {
 
 
 		this.editor = null;
+		this.laplaceEnabled = true;
 
 		this.canvas3d = document.createElement('canvas');
 		this.gl = this.canvas3d.getContext('webgl', {
@@ -63,9 +64,17 @@ class FrequencyGraph extends Graph {
 
 	_drawElements(context, toX, toY) {
 
-		this._drawLaplace(toX, toY);
-
 		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		this.gl.clearColor(1.0, 1.0, 1.0, 1.0); 
+		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
+
+		if(this.laplaceEnabled) {
+
+			this._drawLaplace(toX, toY);
+
+		}
+
 
 		this.reference.draw(context, toX, toY);
 
@@ -104,10 +113,6 @@ class FrequencyGraph extends Graph {
 
 		// this.gl.clearColor(1.0, 0.0, 0.0, 1.0);
 		// this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-
-		this.gl.clearColor(1.0, 1.0, 1.0, 1.0); 
-		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-
 
 
 		{

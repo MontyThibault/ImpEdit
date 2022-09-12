@@ -599,7 +599,7 @@ module.exports = Audio;
 require('./datguimodifications.js');
 
 
-module.exports = function(audio) {
+module.exports = function(audio, bufferLink) {
 
 
 	var helpbox = document.getElementById('helpbox'),
@@ -629,16 +629,6 @@ module.exports = function(audio) {
 		'Convolution Enabled': true,
 		'Auto-Update': true,
 		'Update Interval': 10,
-
-
-		// We must add or remove the folder.
-
-		// 'Manual Update': function() {
-
-
-
-		// },
-
 		'Normalization Enabled': true,
 		'FFT Enabled': false,
 		'Gain': 0.1,
@@ -679,6 +669,43 @@ module.exports = function(audio) {
 		}
 
 	});
+
+
+	var auC = audioGUI.add(params, 'Auto-Update');
+
+	var uiC = audioGUI.add(params, 'Update Interval', 50, 2000).onChange(function(v) {
+
+		bufferLink.linkObservers(v);
+
+	});
+
+
+	auC.onChange(function(v) {
+
+		if(v) {
+
+			bufferLink.linkObservers();
+			uiC.enable();
+
+		} else {
+
+			bufferLink.unlinkObservers();
+			uiC.disable();
+
+		}
+
+	});
+
+	var manC = audioGUI.add({
+
+		'Manual Update': function() {
+
+			bufferLink.manualUpdate();
+
+		}
+
+	}, 'Manual Update');
+
 
 
 	var normC = audioGUI.add(params, 'Normalization Enabled');
@@ -740,6 +767,9 @@ module.exports = function(audio) {
 	// Defaults
 
 	convC.setValue(convC.getValue());
+	auC.setValue(auC.getValue());
+	uiC.setValue(uiC.getValue());
+	manC.setValue(manC.getValue());
 	normC.setValue(normC.getValue());
 	gainC.setValue(gainC.getValue());
 	fftEnblC.setValue(fftEnblC.getValue());
@@ -749,6 +779,7 @@ module.exports = function(audio) {
 
 
 	// Check for BlobURL support
+
 	var blob = window.URL || window.webkitURL;
 
     if (!blob) {
@@ -771,7 +802,7 @@ module.exports = function(audio) {
 
 
 };
-},{"./datguimodifications.js":10}],5:[function(require,module,exports){
+},{"./datguimodifications.js":11}],5:[function(require,module,exports){
 var RangeSlider = require('./rangeslider.js');
 
 
@@ -1027,7 +1058,7 @@ class Axis {
 
 
 module.exports = Axis;
-},{"./rangeslider.js":26}],6:[function(require,module,exports){
+},{"./rangeslider.js":27}],6:[function(require,module,exports){
 class BufferLine {
 
 	constructor(buffer, samplerate) {
@@ -1117,6 +1148,126 @@ class BufferLine {
 
 module.exports = BufferLine;
 },{}],7:[function(require,module,exports){
+
+// Returns a function, that, when invoked, will only be triggered at most once
+// during a given window of time. Normally, the throttled function will run
+// as much as it can, without ever going more than once per `wait` duration;
+// but if you'd like to disable the execution on the leading edge, pass
+// `{leading: false}`. To disable execution on the trailing edge, ditto.
+
+// Sourced from underscore.js
+
+function throttle(func, wait, options) {
+  var context, args, result;
+  var timeout = null;
+  var previous = 0;
+  if (!options) options = {};
+  var later = function() {
+    previous = options.leading === false ? 0 : Date.now();
+    timeout = null;
+    result = func.apply(context, args);
+    if (!timeout) context = args = null;
+  };
+  return function() {
+    var now = Date.now();
+    if (!previous && options.leading === false) previous = now;
+    var remaining = wait - (now - previous);
+    context = this;
+    args = arguments;
+    if (remaining <= 0 || remaining > wait) {
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+      previous = now;
+      result = func.apply(context, args);
+      if (!timeout) context = args = null;
+    } else if (!timeout && options.trailing !== false) {
+      timeout = setTimeout(later, remaining);
+    }
+    return result;
+  };
+};
+
+
+
+
+
+class BufferLink {
+
+	constructor(bufferController, audio) {
+
+		this.bufferController = bufferController;
+		this.audio = audio;
+
+
+		this.updateF = function() {
+
+			audio.updateConvolver(this.buffer);
+
+		}.bind(this.bufferController);
+
+
+		this._prevFThrottled;
+		this._prevInterval;
+
+	}
+
+
+	linkObservers(interval) {
+
+		this.unlinkObservers();
+
+		interval = interval || this._prevInterval;
+
+
+		// Function has been called without specifying a valid interval;
+
+		if(!interval) {
+
+			return;
+
+		}
+
+
+		var fThrottled = throttle(this.updateF, interval);
+
+
+		this.bufferController.addObserver(fThrottled);
+
+		this._prevFThrottled = fThrottled;
+		this._prevInterval = interval;
+
+
+		this.bufferController.notifyObservers();
+
+	}
+
+
+	unlinkObservers() {
+
+		if(this._prevFThrottled) {
+
+			this.bufferController.removeObserver(this._prevFThrottled);
+
+		}
+
+		this._prevFThrottled = undefined;
+
+	}
+
+
+	manualUpdate() {
+
+		this.updateF();
+
+	}
+
+}
+
+
+module.exports = BufferLink;
+},{}],8:[function(require,module,exports){
 var Observable = require('./observable.js');
 
 
@@ -1165,7 +1316,7 @@ class BufferSum extends Observable {
 
 
 module.exports = BufferSum;
-},{"./observable.js":20}],8:[function(require,module,exports){
+},{"./observable.js":21}],9:[function(require,module,exports){
 var isChromium = window.chrome,
     winNav = window.navigator,
     vendorName = winNav.vendor,
@@ -1192,7 +1343,7 @@ if (isIOSChrome) {
    alert('Sorry, due to performance and API compatability, only Chrome is supported.')
 
 }
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 class ControlPoint {
 
 	constructor(x, y, editor, graph) {
@@ -1289,7 +1440,7 @@ class ControlPoint {
 
 
 module.exports = ControlPoint;
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 
 
 // Overwrite dat.GUI close button position
@@ -1340,7 +1491,7 @@ dat.controllers.NumberControllerSlider.prototype.enable = function() {
 
 
 module.exports = undefined;
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 module.exports = `
 
 
@@ -1474,7 +1625,7 @@ void main() {
 
 `;
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 var Graph = require('./graph.js');
 var HzEditor = require('./hzeditor.js');
 var LogAxis = require('./logaxis.js');
@@ -1520,6 +1671,7 @@ class FrequencyGraph extends Graph {
 
 
 		this.editor = null;
+		this.laplaceEnabled = true;
 
 		this.canvas3d = document.createElement('canvas');
 		this.gl = this.canvas3d.getContext('webgl', {
@@ -1540,9 +1692,17 @@ class FrequencyGraph extends Graph {
 
 	_drawElements(context, toX, toY) {
 
-		this._drawLaplace(toX, toY);
-
 		context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		this.gl.clearColor(1.0, 1.0, 1.0, 1.0); 
+		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
+
+		if(this.laplaceEnabled) {
+
+			this._drawLaplace(toX, toY);
+
+		}
+
 
 		this.reference.draw(context, toX, toY);
 
@@ -1581,10 +1741,6 @@ class FrequencyGraph extends Graph {
 
 		// this.gl.clearColor(1.0, 0.0, 0.0, 1.0);
 		// this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-
-		this.gl.clearColor(1.0, 1.0, 1.0, 1.0); 
-		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-
 
 
 		{
@@ -1854,7 +2010,7 @@ class FrequencyGraph extends Graph {
 
 module.exports = FrequencyGraph;
 
-},{"./axis.js":5,"./fShaderGLSL.js":11,"./graph.js":13,"./hzeditor.js":14,"./logaxis.js":17,"./vShaderGLSL.js":29}],13:[function(require,module,exports){
+},{"./axis.js":5,"./fShaderGLSL.js":12,"./graph.js":14,"./hzeditor.js":15,"./logaxis.js":18,"./vShaderGLSL.js":30}],14:[function(require,module,exports){
 var MouseControl = require('./mousecontrol.js');
 var ReferenceLines = require('./referencelines.js');
 var RangeSlider = require('./rangeslider.js');
@@ -2052,7 +2208,7 @@ class Graph {
 }
 
 module.exports = Graph;
-},{"./mousecontrol.js":19,"./rangeslider.js":26,"./referencelines.js":27}],14:[function(require,module,exports){
+},{"./mousecontrol.js":20,"./rangeslider.js":27,"./referencelines.js":28}],15:[function(require,module,exports){
 var PointEditor = require('./pointeditor.js');
 var OscillatorPoint = require('./oscillatorPoint.js');
 
@@ -2250,7 +2406,7 @@ class HzEditor extends PointEditor {
 
 
 module.exports = HzEditor;
-},{"./oscillatorPoint.js":23,"./pointeditor.js":24}],15:[function(require,module,exports){
+},{"./oscillatorPoint.js":24,"./pointeditor.js":25}],16:[function(require,module,exports){
 var Graph = require('./graph.js');
 var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
@@ -2337,7 +2493,7 @@ class IRGraph extends Graph {
 
 
 module.exports = IRGraph;
-},{"./axis.js":5,"./bufferline.js":6,"./graph.js":13,"./lineeditor.js":16}],16:[function(require,module,exports){
+},{"./axis.js":5,"./bufferline.js":6,"./graph.js":14,"./lineeditor.js":17}],17:[function(require,module,exports){
 var PointEditor = require('./pointeditor.js');
 var PointLine = require('./pointline.js');
 
@@ -2487,7 +2643,7 @@ class LineEditor extends PointEditor {
 
 module.exports = LineEditor;
 
-},{"./pointeditor.js":24,"./pointline.js":25}],17:[function(require,module,exports){
+},{"./pointeditor.js":25,"./pointline.js":26}],18:[function(require,module,exports){
 var Axis = require('./axis.js');
 
 
@@ -2645,7 +2801,7 @@ class LogAxis extends Axis {
 
 
 module.exports = LogAxis;
-},{"./axis.js":5}],18:[function(require,module,exports){
+},{"./axis.js":5}],19:[function(require,module,exports){
 
 
 require('./checkchrome.js');
@@ -2658,6 +2814,8 @@ var Audio = require("./audio.js");
 var attachAudioDOM = require("./audioDOM.js");
 var oscillatorDOM = require('./oscillatorDOM.js');
 var BufferSum = require('./buffersum.js');
+
+var BufferLink = require('./bufferlink.js');
 
 
 var HzEditor = require('./hzeditor.js');
@@ -2773,33 +2931,12 @@ ir.setVizIR(totalBuffer.buffer);
 fg.setVizIR(totalBuffer.buffer);
 
 
+totalBuffer.addObserver(function() {
 
-var audio = new Audio();
+	ir.needsUpdate = true;
+	fg.needsUpdate = true;
 
-
-function throttle(fn, threshhold, scope) {
-  threshhold || (threshhold = 250);
-  var last,
-      deferTimer;
-  return function () {
-    var context = scope || this;
-
-    var now = +new Date,
-        args = arguments;
-    if (last && now < last + threshhold) {
-      // hold on to it
-      clearTimeout(deferTimer);
-      deferTimer = setTimeout(function () {
-        last = now;
-        fn.apply(context, args);
-      }, threshhold);
-    } else {
-      last = now;
-      fn.apply(context, args);
-    }
-  };
-}
-
+});
 
 
 totalBuffer.addObserver(function() {
@@ -2811,30 +2948,18 @@ totalBuffer.addObserver(function() {
 
 
 
-totalBuffer.addObserver(throttle(function() {
+var audio = new Audio();
 
-	audio.updateConvolver(this.buffer);
-
-}, 200));
-
-
-// Prepare default buffer.
-
-totalBuffer.notifyObservers();
+var bufferLink = new BufferLink(totalBuffer, audio);
 
 
 
-totalBuffer.addObserver(function() {
 
-	ir.needsUpdate = true;
-	fg.needsUpdate = true;
+// DOM GUI's
 
-});
-
-
-oscillatorDOM(ir, fg, og, hz_editor);
-attachAudioDOM(audio);
-},{"./audio.js":3,"./audioDOM.js":4,"./buffersum.js":7,"./checkchrome.js":8,"./frequencygraph.js":12,"./hzeditor.js":14,"./irgraph.js":15,"./offsetgraph.js":21,"./oscillatorDOM.js":22}],19:[function(require,module,exports){
+oscillatorDOM(ir, fg, og, hz_editor, audio);
+attachAudioDOM(audio, bufferLink);
+},{"./audio.js":3,"./audioDOM.js":4,"./bufferlink.js":7,"./buffersum.js":8,"./checkchrome.js":9,"./frequencygraph.js":13,"./hzeditor.js":15,"./irgraph.js":16,"./offsetgraph.js":22,"./oscillatorDOM.js":23}],20:[function(require,module,exports){
 class MouseControl {
 
 	constructor(graph, canvas) {
@@ -3013,7 +3138,7 @@ class MouseControl {
 
 
 module.exports = MouseControl; // Singleton
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 
 class Observable {
 
@@ -3056,7 +3181,7 @@ class Observable {
 
 
 module.exports = Observable;
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 var Graph = require('./graph.js');
 var Axis = require('./axis.js');
 var LogAxis = require('./logaxis.js');
@@ -3123,8 +3248,8 @@ class OffsetGraph extends Graph {
 
 
 module.exports = OffsetGraph;
-},{"./axis.js":5,"./graph.js":13,"./logaxis.js":17}],22:[function(require,module,exports){
-module.exports = function(ir, fg, og, hz_editor) {
+},{"./axis.js":5,"./graph.js":14,"./logaxis.js":18}],23:[function(require,module,exports){
+module.exports = function(ir, fg, og, hz_editor, audio) {
 
 
 	var gui = new dat.GUI({
@@ -3136,6 +3261,13 @@ module.exports = function(ir, fg, og, hz_editor) {
 
 	var i = 0;
 
+
+
+	gui.add(fg, 'laplaceEnabled').name('Enable Laplace Viz.').onChange(function() {
+
+		fg.needsUpdate = true;
+
+	});
 
 
 	function addControlPointToGUI(op) {
@@ -3312,7 +3444,7 @@ module.exports = function(ir, fg, og, hz_editor) {
 	};
 
 };
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 
 
@@ -3348,7 +3480,7 @@ class OscillatorPoint {
 }
 
 module.exports = OscillatorPoint;
-},{"./controlpoint.js":9}],24:[function(require,module,exports){
+},{"./controlpoint.js":10}],25:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 var Observable = require('./observable.js');
 
@@ -3446,7 +3578,7 @@ class PointEditor extends Observable {
 
 
 module.exports = PointEditor;
-},{"./controlpoint.js":9,"./observable.js":20}],25:[function(require,module,exports){
+},{"./controlpoint.js":10,"./observable.js":21}],26:[function(require,module,exports){
 class PointLine {
 
 	constructor() {
@@ -3484,7 +3616,7 @@ class PointLine {
 
 
 module.exports = PointLine;
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 // Throughout this class, p refers to "principal" and s refers to
 // "secondary", as a generic version of x/y or y/x, depending on the orientation.
 
@@ -4052,7 +4184,7 @@ class RangeSlider {
 
 module.exports = RangeSlider;
 
-},{}],27:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 var ReferenceLinesAxis = require('./referencelinesaxis.js');
 
 
@@ -4175,7 +4307,7 @@ class ReferenceLines {
 
 
 module.exports = ReferenceLines;
-},{"./referencelinesaxis.js":28}],28:[function(require,module,exports){
+},{"./referencelinesaxis.js":29}],29:[function(require,module,exports){
 
 
 class ReferenceLinesAxis {
@@ -4637,7 +4769,7 @@ class ReferenceLinesAxis {
 
 
 module.exports = ReferenceLinesAxis;
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 module.exports = `
 
 
@@ -4677,4 +4809,4 @@ void main() {
 }			
 
 `;
-},{}]},{},[18]);
+},{}]},{},[19]);
