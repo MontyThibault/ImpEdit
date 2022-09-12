@@ -1,4 +1,4 @@
-Potential improvements: 
+To do:
 
 
 Set up a window resize observer system instead of querying every frame.
@@ -7,3 +7,7 @@ Set up an update hierarchy instead of drawing every frame.
 
 Fix referencelines bug: lower scales always drawn before higher scales (even if different objects)
 Make referencelines color in proportion to canvas distance, not log distance.
+
+
+Hook up convolver with graph editor
+Fix clicking bug with FFT Low-pass

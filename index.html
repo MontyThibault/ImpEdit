@@ -13,6 +13,10 @@
 			audio {
 				width: 100%;
 			}
+
+			input[type="range"] {
+				width: 500px;
+			}
 		</style>
 	</head>
 	<body>
@@ -23,9 +27,22 @@
 		</audio>
 
 		<canvas id="screen"></canvas>
-		<canvas id="eq" width=500></canvas>
 
-		<input type="range" min="20" max="20000" />
+		<form>
+			<label for="convolution_enabled">Enable Impulse Response Convolution</label>
+			<input type="checkbox" id="convolution_enabled" />
+
+			<br/>
+
+			<label for="fft_enabled">Enable FFT Low-Pass</label>
+			<input type="checkbox" id="fft_enabled" />
+
+			<br/>
+
+			<span id="range_label">100 Hz</span>
+			<br/>
+			<input id="range_slider" type="range" step="0.01" />
+		</form>
 
 		<script src='jquery-3.2.1.js'></script>
 		<script src='build/bundle.js'></script>
