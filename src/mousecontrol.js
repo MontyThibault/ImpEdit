@@ -32,6 +32,7 @@ function MouseControl(graph) {
 
 }
 
+
 MouseControl.prototype._getX = function(e) {
 	return e.clientX - this.graph.canvas.getBoundingClientRect().left;
 };
@@ -67,6 +68,7 @@ MouseControl.prototype._updateActive = function(e) {
 
 };
 
+
 MouseControl.prototype._setActive = function(o) {
 
 	if(this.active !== o) {
@@ -83,11 +85,16 @@ MouseControl.prototype._setActive = function(o) {
 	}
 
 	this.active = o;
+
 };
 
+
 MouseControl.prototype.addObject = function(o) {
+
 	this.objects.push(o);
+
 };
+
 
 MouseControl.prototype.removeObject = function(o) {
 
@@ -97,6 +104,7 @@ MouseControl.prototype.removeObject = function(o) {
 		this.objects.splice(i, 1);
 	}
 };
+
 
 MouseControl.prototype.onmousemove = function(e) {
 
@@ -126,20 +134,27 @@ MouseControl.prototype.onmousemove = function(e) {
 
 };
 
+
 MouseControl.prototype.onmousedown = function(e) {
+
 	this.mousedown = true;
 
 	this.oldClientX = this._getX(e);
 	this.oldClientY = this._getY(e);
+
 };
 
+
 MouseControl.prototype.onmouseup = function(e) {
+
 	this.mousedown = false;
 
 	if(this.active && this.active.onmouseup) {
 		this.active.onmouseup();
 	}
+
 };
+
 
 MouseControl.prototype.ondblclick = function(e) {
 
@@ -152,6 +167,7 @@ MouseControl.prototype.ondblclick = function(e) {
 	this.graph.needsUpdate = true;
 
 };
+
 
 MouseControl.prototype.onscroll = function(e) {
 

@@ -37,6 +37,8 @@ window.onresize = function() {
 
 	hz.needsUpdate = true;
 
+	hz.gl.viewport(0, 0, hz_canvas3d.width, hz_canvas3d.height);
+
 
 	draw();
 };
