@@ -757,7 +757,9 @@ class FrequencyGraph extends Graph {
 		super(canvas2d);
 
 		this.xAxis = new Axis(true, 1, 10, function() { return canvas2d.width; });
-		this.yAxis = new Axis(false, -10, 10, function() { return canvas2d.height; });
+		this.yAxis = new Axis(false, 10, 10000, function() { return canvas2d.height; });
+
+		this.yAxis.maxLimit = 10000;
 
 		this.initAxes(this.xAxis, this.yAxis);
 
@@ -922,6 +924,7 @@ class FrequencyGraph extends Graph {
 
 			#define buffer_length 1000
 			#define samplerate 96000.0
+			#define pi 3.1415926536
 
 			uniform lowp float uIR[buffer_length];
 			// uniform int uIRLength;
@@ -943,8 +946,8 @@ class FrequencyGraph extends Graph {
 
 					t = float(i) / samplerate;	
 
-					re_sum += exp(graphPosition.x) * cos(graphPosition.y * t);
-					im_sum += exp(graphPosition.x) * sin(graphPosition.y * t);
+					re_sum += exp(graphPosition.x) * cos(graphPosition.y * t * 2.0 * pi) * uIR[i];
+					im_sum += exp(graphPosition.x) * sin(graphPosition.y * t * 2.0 * pi) * uIR[i];
 
 				}
 
@@ -952,10 +955,34 @@ class FrequencyGraph extends Graph {
 
 			}
 
+			
+			lowp vec3 color_interp(lowp float x) {
+
+				lowp vec3 min = vec3(0.0, 0.0, 1.0);
+				lowp vec3 max = vec3(1.0, 1.0, 0.0);
+
+				lowp float minX = 0.0;
+				lowp float maxX = 10.0;
+
+
+				if(x <= minX) {
+					return min;
+				}
+
+				if(x >= maxX) {
+					return max;
+				}
+
+				return min + (max - min) * ((x - minX) / (maxX - minX));
+
+			}
+
 
 			void main() {
 
-				gl_FragColor = vec4(vVertexGraphPosition, uIR[0], 1.0);
+				lowp float laplace = computeLaplace(vVertexGraphPosition);
+
+				gl_FragColor = vec4(color_interp(laplace), 1.0);
 
 			}
 
