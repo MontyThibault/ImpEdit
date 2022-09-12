@@ -27,14 +27,22 @@ ReferenceLinesAxis.prototype._iterateIntervalOverAxis = function(interval, f) {
 };
 
 
-ReferenceLinesAxis.prototype.getShade = function(scale, scalefactor, scalelevels) {
+ReferenceLinesAxis.prototype.getShade = function(scale) {
 
-	return Math.max(Math.min(scalefactor - scale, scalelevels), 0) / scalelevels;
+	// Get canvas distance
+
+	var interval = Math.pow(this.line_multiples, scale);
+	var cd = this.axis.graphToCanvas(interval) - this.axis.graphToCanvas(0);
+
+	// At this distance, lines appear completely black.
+	var black_width = 200;
+
+	return 1 - Math.max(0, Math.min(1, Math.abs(cd) / black_width));
 
 };
 
 
-ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale, scalefactor, scalelevels) {
+ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale) {
 
 
 	function moveTo(x, y) {
@@ -47,16 +55,13 @@ ReferenceLinesAxis.prototype.drawLines = function(context, toX, toY, scale, scal
 
 
 	
-
-	var shade = this.getShade(scale, scalefactor, scalelevels);
+	var interval = Math.pow(this.line_multiples, scale);
+	var shade = this.getShade(scale);
 
 	var hex = Math.floor(shade * 255);
 
 	var color = 'rgb(' + hex + ', ' + hex + ', ' + hex + ')';
 	context.strokeStyle = color;
-
-
-	var interval = Math.pow(this.line_multiples, scale);
 
 
 	context.beginPath();

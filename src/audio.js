@@ -61,10 +61,25 @@ function Audio() {
 	this.convolver = this.audioContext.createConvolver();
 
 	// Dirac-Delta 
-	this.convolver.buffer = this.audioContext.createBuffer(2, 100, this.audioContext.sampleRate);
+	this.convolver.buffer = this.audioContext.createBuffer(2, 10000, this.audioContext.sampleRate);
 	
-	this.convolver.buffer.getChannelData(0)[0] = 1;
-	this.convolver.buffer.getChannelData(1)[0] = 1;
+	var arr = new Float32Array(this.convolver.buffer.length);
+	
+
+	for(var channel = 0; channel < this.convolver.buffer.numberOfChannels; channel++) {
+
+		for(var i = 0; i < this.convolver.buffer.length; i++) {
+
+			arr[i] = Math.random() * 2 - 1;
+
+		}
+
+		this.convolver.buffer.copyToChannel(arr, channel, 0);
+	}
+
+	this.convolver.loop = false;
+	this.convolver.normalize = true;
+
 
 
 	this.convolve = false;
