@@ -9,10 +9,8 @@ To do:
 
 
 Create limits for editor elements, distinct from the window limits.
+Or maybe include an n-pixel padding.
 
-
-
-Implement toBuffer in lineeditor.js
 
 
 Begin on Laplace editor. (WebGL implementation)
@@ -20,4 +18,4 @@ FFT EQ (this should be very easy)
 
 
 Hook up convolver with graph editor (convolver currently doesn't work for an unknown reason)
-Fix clicking bug with FFT Low-pass
+Fix clicking bug with FFT (didn't work first time...)

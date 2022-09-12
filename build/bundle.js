@@ -474,6 +474,17 @@ module.exports = function(audio) {
 	var range_label = document.getElementById('range_label');
 	var range_slider = document.getElementById('range_slider');
 
+	var audio_file = document.getElementById('audio_file');
+
+
+	// Check for BlobURL support
+	var blob = window.URL || window.webkitURL;
+
+    if (!blob) {
+        console.log('Your browser does not support Blob URLs. File selection disabled.');
+        return;           
+    } 
+
 
 	convolution_enabled.onclick = function(e) {
 
@@ -517,6 +528,19 @@ module.exports = function(audio) {
 	range_slider.value = (Math.log(range_min) + Math.log(range_max)) 
 			/ (2 * Math.log(range_log_base));
 	range_slider.oninput();
+
+
+
+	// http://jsfiddle.net/adamazad/0oy5moph/
+	audio_file.onchange = function(e) {
+
+		var file =  audio_file.files[0];
+		var fileURL = blob.createObjectURL(file);
+
+		var myAudio = document.querySelector('audio');
+		myAudio.src = fileURL;
+
+	};
 
 };
 },{}],5:[function(require,module,exports){
@@ -1145,6 +1169,8 @@ MouseControl.prototype.ondblclick = function(e) {
 	} else {
 		this.graph.addControlPoint(this._getX(e), this._getY(e));
 	}
+
+	this.graph.needsUpdate = true;
 
 };
 
