@@ -1,4 +1,79 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+
+function Audio(canvas, context) {
+
+	var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+
+	var myAudio = document.querySelector('audio');
+	myAudio.crossOrigin = "anonymous";
+
+	var source = audioContext.createMediaElementSource(myAudio);
+	
+	var analyser = audioContext.createAnalyser();
+
+
+	source.connect(analyser);
+	analyser.connect(audioContext.destination);
+
+	/////////////////////////
+
+
+
+	analyser.fftSize = 2048;
+	var bufferLength = analyser.frequencyBinCount;
+	var dataArray = new Uint8Array(bufferLength);
+	analyser.getByteTimeDomainData(dataArray);
+
+
+	// draw an oscilloscope of the current audio source
+
+	function draw() {
+
+	  drawVisual = requestAnimationFrame(draw);
+
+	  window.crypto.getRandomValues(dataArray);
+
+	  analyser.getByteTimeDomainData(dataArray);
+
+	  context.fillStyle = 'rgb(200, 200, 200)';
+	  context.fillRect(0, 0, canvas.width, canvas.height);
+
+	  context.lineWidth = 2;
+	  context.strokeStyle = 'rgb(0, 0, 0)';
+
+	  context.beginPath();
+
+	  var sliceWidth = canvas.width * 1.0 / bufferLength;
+	  var x = 0;
+
+	  for (var i = 0; i < bufferLength; i++) {
+
+	    var v = dataArray[i] / 128.0;
+	    var y = v * canvas.height / 2;
+
+	    if (i === 0) {
+	      context.moveTo(x, y);
+	    } else {
+	      context.lineTo(x, y);
+	    }
+
+	    x += sliceWidth;
+	  }
+
+	  context.lineTo(canvas.width, canvas.height / 2);
+	  context.stroke();
+	};
+
+	draw();
+
+}
+
+
+
+
+module.exports = Audio;
+},{}],2:[function(require,module,exports){
 var RangeSlider = require('./rangeslider.js');
 
 
@@ -94,7 +169,7 @@ Axis.prototype.panGraph = function(diff) {
 
 
 module.exports = Axis;
-},{"./rangeslider.js":8}],2:[function(require,module,exports){
+},{"./rangeslider.js":9}],3:[function(require,module,exports){
 function ControlPoint(x, y, editor, graph) {
 	this.x = x;
 	this.y = y;
@@ -148,7 +223,7 @@ ControlPoint.prototype.ondblclick = function() {
 };
 
 module.exports = ControlPoint;
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 var LineEditor = require('./lineeditor.js');
 var Axis = require('./axis.js');
 var MouseControl = require('./mousecontrol.js');
@@ -268,7 +343,7 @@ Graph.prototype.addControlPoint = function(x, y) {
 
 
 module.exports = Graph;
-},{"./axis.js":1,"./lineeditor.js":5,"./mousecontrol.js":7,"./rangeslider.js":8,"./referencelines.js":9}],4:[function(require,module,exports){
+},{"./axis.js":2,"./lineeditor.js":6,"./mousecontrol.js":8,"./rangeslider.js":9,"./referencelines.js":10}],5:[function(require,module,exports){
 function Line() {
 	this.points = [];
 	this.color = '#FF0000';
@@ -291,7 +366,7 @@ Line.prototype.draw = function(context, toX, toY) {
 };
 
 module.exports = Line;
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 var ControlPoint = require('./controlpoint.js');
 var Line = require('./line.js');
 
@@ -348,39 +423,50 @@ LineEditor.prototype.toBuffer = function() {
 
 
 module.exports = LineEditor;
-},{"./controlpoint.js":2,"./line.js":4}],6:[function(require,module,exports){
+},{"./controlpoint.js":3,"./line.js":5}],7:[function(require,module,exports){
 
 
 var Graph = require("./graph.js");
+var Audio = require("./audio.js");
 
 
-var canvas = document.getElementById('screen');
-var context = canvas.getContext('2d');
+var graph_canvas = document.getElementById('screen');
+var graph_context = graph_canvas.getContext('2d');
 
 
-var graph = new Graph(canvas);
+var graph = new Graph(graph_canvas);
 
 
 window.onresize = function() {
 
-	canvas.width = window.innerWidth;
-	canvas.height = 500;
+	graph_canvas.width = window.innerWidth;
+	graph_canvas.height = 500;
 
 	draw();
 };
 
 function draw() {
 
-	context.fillStyle = '#F5F5F5';
-	context.fillRect(0, 0, canvas.width, canvas.height);
+	graph_context.fillStyle = '#F5F5F5';
+	graph_context.fillRect(0, 0, graph_canvas.width, graph_canvas.height);
 
-	graph.draw(context);
+	graph.draw(graph_context);
 	requestAnimationFrame(draw);
 
 }
 
 window.onresize();
-},{"./graph.js":3}],7:[function(require,module,exports){
+
+
+
+
+///////////////////////
+
+var eq_canvas = document.getElementById('eq');
+var eq_context = eq_canvas.getContext('2d');
+
+Audio(eq_canvas, eq_context);
+},{"./audio.js":1,"./graph.js":4}],8:[function(require,module,exports){
 
 function debounce(f, delay) {
   var timer = null;
@@ -540,7 +626,7 @@ MouseControl.prototype.onscroll = function(e) {
 
 
 module.exports = MouseControl; // Singleton
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 
 // Throughout this class, p refers to "principal" and s refers to
 // "secondary", as a generic version of x/y or y/x, depending on the orientation.
@@ -724,7 +810,7 @@ RangeSlider.prototype.ondblclick = function() {
 
 module.exports = RangeSlider;
 
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 var ReferenceLinesAxis = require('./referencelinesaxis.js');
 
 
@@ -740,6 +826,7 @@ function ReferenceLines(principal_axis, secondary_axis) {
 
 // Generate array of shades and drawing callables
 ReferenceLines.prototype._getDrawingArray = function(ref) {
+
 
 	// scale-x refers to logarithmic values
 
@@ -821,7 +908,7 @@ ReferenceLines.prototype.draw = function(context, toX, toY) {
 
 
 module.exports = ReferenceLines;
-},{"./referencelinesaxis.js":10}],10:[function(require,module,exports){
+},{"./referencelinesaxis.js":11}],11:[function(require,module,exports){
 
 
 function ReferenceLinesAxis(principal_axis, secondary_axis) {
@@ -992,4 +1079,4 @@ ReferenceLinesAxis.prototype.drawLabels = function(context, toX, toY) {
 
 
 module.exports = ReferenceLinesAxis;
-},{}]},{},[6]);
+},{}]},{},[7]);
